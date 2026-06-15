@@ -14,4 +14,9 @@
       <strong>{{ summary.active_residents }}</strong>
     </div>
   </div>
+  <p>
+    <a class="button secondary" href="{% url 'core:block_list' %}">Blocos</a>
+    <a class="button secondary" href="{% url 'core:unit_list' %}">Unidades</a>
+    <a class="button secondary" href="{% url 'core:membership_list' %}">Membros</a>
+  </p>
 {% endblock %}

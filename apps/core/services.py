@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.text import slugify
@@ -17,6 +18,14 @@ from .models import (
 )
 from .permissions import require_condominium_manager
 from .selectors import get_condominium_for_user
+
+ASSIGNABLE_MEMBERSHIP_ROLES = {
+    CondominiumRole.COUNCIL,
+    CondominiumRole.STAFF,
+    CondominiumRole.RESIDENT,
+    CondominiumRole.OWNER,
+    CondominiumRole.TENANT,
+}
 
 
 @transaction.atomic
@@ -152,6 +161,59 @@ def add_membership(
         metadata={"member_user_id": str(user.id), "role": str(role)},
     )
     return membership
+
+
+@transaction.atomic
+def create_user_membership(
+    *,
+    condominium: Condominium,
+    actor,
+    first_name: str,
+    last_name: str = "",
+    email: str,
+    role: CondominiumRole | str,
+    username: str = "",
+    temporary_password: str = "",
+) -> CondominiumMembership:
+    require_condominium_manager(actor, condominium)
+    if role not in ASSIGNABLE_MEMBERSHIP_ROLES:
+        raise ValidationError({"role": "Este papel nao pode ser atribuido por esta tela."})
+
+    User = get_user_model()
+    normalized_email = email.strip().lower()
+    user = User.objects.filter(email__iexact=normalized_email).first()
+
+    if user is None:
+        if not username:
+            raise ValidationError({"username": "Informe um usuario para novo cadastro."})
+        if not temporary_password:
+            raise ValidationError({"temporary_password": "Informe uma senha temporaria."})
+
+        user = User(
+            username=username.strip(),
+            email=normalized_email,
+            first_name=first_name.strip(),
+            last_name=last_name.strip(),
+        )
+        user.set_password(temporary_password)
+        user.full_clean()
+        user.save()
+        create_audit_log(
+            condominium=condominium,
+            actor=actor,
+            action="accounts.user.created",
+            target=user,
+            metadata={"created_for_condominium_id": str(condominium.id)},
+        )
+    elif not user.is_active:
+        raise ValidationError({"email": "Este usuario esta inativo."})
+
+    return add_membership(
+        condominium=condominium,
+        actor=actor,
+        user=user,
+        role=role,
+    )
 
 
 @transaction.atomic

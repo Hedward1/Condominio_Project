@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from apps.audit.models import AuditLog
 from apps.core.models import Block, Condominium, CondominiumMembership, CondominiumRole
 from apps.core.selectors import get_condominium_for_user, list_condominiums_for_user
-from apps.core.services import create_unit
+from apps.core.services import create_unit, create_user_membership
 
 
 @pytest.fixture
@@ -87,3 +87,25 @@ def test_create_unit_scopes_to_condominium_and_creates_audit_log(user_factory, c
         action="core.unit.created",
         object_id=str(unit.id),
     ).exists()
+
+
+@pytest.mark.django_db
+def test_create_user_membership_rejects_manager_role_in_service(user_factory, condominiums):
+    syndic = user_factory(username="syndic")
+    condo_a, _ = condominiums
+    CondominiumMembership.objects.create(
+        condominium=condo_a,
+        user=syndic,
+        role=CondominiumRole.SYNDIC,
+    )
+
+    with pytest.raises(ValidationError):
+        create_user_membership(
+            condominium=condo_a,
+            actor=syndic,
+            first_name="Novo",
+            email="novo@example.com",
+            username="novo",
+            temporary_password="testpass123",
+            role=CondominiumRole.SYNDIC,
+        )

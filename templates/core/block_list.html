@@ -1,0 +1,32 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Blocos{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Blocos</h1>
+    <a class="button" href="{% url 'core:block_create' %}">Novo bloco</a>
+  </div>
+  <section class="panel">
+    {% if blocks %}
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Descricao</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for block in blocks %}
+            <tr>
+              <td>{{ block.name }}</td>
+              <td class="muted">{{ block.description|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum bloco cadastrado.</p>
+    {% endif %}
+  </section>
+{% endblock %}

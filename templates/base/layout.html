@@ -50,6 +50,14 @@
         margin: 24px auto;
       }
 
+      .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
       .panel {
         background: var(--panel);
         border: 1px solid var(--border);
@@ -100,18 +108,54 @@
       }
 
       select,
-      input {
+      input,
+      textarea {
         width: 100%;
         min-height: 40px;
         padding: 8px 10px;
         border: 1px solid var(--border);
         border-radius: 6px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 96px;
+        resize: vertical;
       }
 
       label {
         display: block;
         margin-bottom: 6px;
         font-weight: 600;
+      }
+
+      .field {
+        margin-bottom: 14px;
+      }
+
+      .errorlist {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        color: #991b1b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--panel);
+      }
+
+      th,
+      td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 14px;
+        color: var(--muted);
       }
 
       .messages {
@@ -123,6 +167,11 @@
       .messages li {
         padding: 10px 12px;
         border-radius: 6px;
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .messages li.error {
         background: #fee2e2;
         color: #991b1b;
       }
@@ -138,6 +187,14 @@
       </div>
       <nav>
         {% if request.user.is_authenticated %}
+          {% if request.condominium %}
+            <a href="{% url 'dashboard:home' %}">Dashboard</a>
+          {% endif %}
+          {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
+            <a href="{% url 'core:block_list' %}">Blocos</a>
+            <a href="{% url 'core:unit_list' %}">Unidades</a>
+            <a href="{% url 'core:membership_list' %}">Membros</a>
+          {% endif %}
           <a href="{% url 'core:condominium_select' %}">Trocar condominio</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline">
             {% csrf_token %}
@@ -150,7 +207,7 @@
       {% if messages %}
         <ul class="messages">
           {% for message in messages %}
-            <li>{{ message }}</li>
+            <li class="{{ message.tags }}">{{ message }}</li>
           {% endfor %}
         </ul>
       {% endif %}
