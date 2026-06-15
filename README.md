@@ -1,17 +1,61 @@
-# Sistema Modular de Administracao de Condominios
+# Condominio Project
 
-Monolito Django modular para administracao de condominios, com multi-tenancy por linha e escopo inicial de MVP.
+Sistema modular de administração de condomínios, desenvolvido para centralizar comunicação, chamados, documentos, reservas e indicadores em uma plataforma simples, segura e transparente.
 
-## Escopo MVP
+## Objetivo
 
-- Core do condominio
-- Comunicacao oficial
-- Chamados e ocorrencias
-- Documentos
-- Reservas de areas comuns
-- Dashboard simples do sindico
+O projeto tem como objetivo criar uma plataforma web para ajudar síndicos, moradores, conselhos e pequenos administradores a organizar a rotina operacional do condomínio, reduzindo dependência de WhatsApp, planilhas, papel e controles manuais.
 
-## Primeiros comandos
+## Escopo inicial do MVP
+
+O MVP será focado nos seguintes módulos:
+
+- Core do condomínio;
+- Cadastro de blocos, unidades e moradores;
+- Comunicação oficial;
+- Chamados e ocorrências;
+- Documentos;
+- Reservas de áreas comuns;
+- Dashboard simples do síndico.
+
+## Fora do MVP inicial
+
+Para manter o escopo controlado, os seguintes itens não serão implementados na primeira versão:
+
+- Boleto;
+- Integração bancária;
+- Inadimplência;
+- Assembleia digital formal;
+- App mobile nativo;
+- Portaria completa;
+- IA avançada;
+- Customizações profundas por cliente.
+
+## Arquitetura planejada
+
+A arquitetura inicial será um monólito Django modular, com PostgreSQL e separação multi-tenant por condomínio.
+
+## Stack prevista
+
+- Python;
+- Django;
+- PostgreSQL;
+- Django REST Framework;
+- Docker;
+- Pytest;
+- HTMX ou frontend web responsivo simples.
+
+## Princípios do projeto
+
+- Simples antes de completo;
+- Modular antes de customizável demais;
+- Segurança e LGPD desde o primeiro commit;
+- Multi-tenant desde o início;
+- Histórico antes de conversa solta;
+- Dados antes de achismo;
+- Web responsivo antes de app nativo.
+
+## Primeiros comandos previstos
 
 ```powershell
 python -m venv .venv
@@ -20,16 +64,21 @@ python -m venv .venv
 .\.venv\Scripts\python manage.py runserver
 ```
 
-## Testes
+## Testes previstos
 
 ```powershell
 .\.venv\Scripts\python -m pytest
 ```
 
-## Decisoes de seguranca
+## Documentação
 
-- O tenant ativo e carregado por middleware a partir da sessao.
-- Objetos de negocio usam `condominium_id`.
-- Leituras ficam em selectors com filtro por condominio.
-- Escritas ficam em services com validacao de permissao.
-- Acoes sensiveis gravam `AuditLog`.
+- [`CODEX.md`](CODEX.md): manual técnico para orientar o Codex e qualquer agente de desenvolvimento.
+- [`docs/product/strategy.md`](docs/product/strategy.md): estratégia de produto e escopo do MVP.
+- [`docs/technical/architecture.md`](docs/technical/architecture.md): arquitetura técnica planejada.
+- [`docs/technical/security.md`](docs/technical/security.md): segurança, permissões e LGPD.
+- [`docs/technical/testing.md`](docs/technical/testing.md): estratégia de testes.
+- [`docs/adr`](docs/adr): decisões arquiteturais registradas.
+
+## Status
+
+Projeto em fase inicial de documentação, validação e preparação técnica.
