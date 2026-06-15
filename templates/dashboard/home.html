@@ -1,0 +1,17 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+  <h1>Dashboard</h1>
+  <div class="grid">
+    <div class="metric">
+      <span class="muted">Unidades</span>
+      <strong>{{ summary.total_units }}</strong>
+    </div>
+    <div class="metric">
+      <span class="muted">Moradores ativos</span>
+      <strong>{{ summary.active_residents }}</strong>
+    </div>
+  </div>
+{% endblock %}

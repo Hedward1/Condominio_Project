@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Condominio{% endblock %}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f7f8;
+        --panel: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #d7dce2;
+        --primary: #0f766e;
+        --primary-dark: #115e59;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      a {
+        color: var(--primary-dark);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+      }
+
+      .brand {
+        font-weight: 700;
+      }
+
+      .container {
+        width: min(1040px, calc(100% - 32px));
+        margin: 24px auto;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+
+      .metric {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        background: #ffffff;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 28px;
+        line-height: 1.1;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 8px 14px;
+        border: 1px solid var(--primary);
+        border-radius: 6px;
+        background: var(--primary);
+        color: #ffffff;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .button.secondary {
+        background: #ffffff;
+        color: var(--primary-dark);
+      }
+
+      select,
+      input {
+        width: 100%;
+        min-height: 40px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      .messages {
+        margin: 0 0 16px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .messages li {
+        padding: 10px 12px;
+        border-radius: 6px;
+        background: #fee2e2;
+        color: #991b1b;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <div class="brand">Condominio</div>
+        {% if request.condominium %}
+          <div class="muted">{{ request.condominium.name }}</div>
+        {% endif %}
+      </div>
+      <nav>
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'core:condominium_select' %}">Trocar condominio</a>
+          <form method="post" action="{% url 'logout' %}" style="display:inline">
+            {% csrf_token %}
+            <button class="button secondary" type="submit">Sair</button>
+          </form>
+        {% endif %}
+      </nav>
+    </header>
+    <main class="container">
+      {% if messages %}
+        <ul class="messages">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

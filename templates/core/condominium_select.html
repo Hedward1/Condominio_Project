@@ -1,0 +1,25 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Selecionar condominio{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Selecionar condominio</h1>
+    {% if condominiums %}
+      <form method="post">
+        {% csrf_token %}
+        <label for="condominium_id">Condominio ativo</label>
+        <select id="condominium_id" name="condominium_id" required>
+          {% for condominium in condominiums %}
+            <option value="{{ condominium.id }}">{{ condominium.name }}</option>
+          {% endfor %}
+        </select>
+        <p>
+          <button class="button" type="submit">Entrar</button>
+        </p>
+      </form>
+    {% else %}
+      <p class="muted">Seu usuario ainda nao possui acesso a nenhum condominio.</p>
+    {% endif %}
+  </section>
+{% endblock %}
