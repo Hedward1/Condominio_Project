@@ -25,10 +25,17 @@ def list_tickets_for_user(*, condominium, user):
     )
 
 
-def list_tickets_for_manager(*, condominium):
+def list_tickets_for_manager(*, condominium, filters=None):
+    filters = filters or {}
+    tickets = Ticket.active_objects.filter(condominium=condominium)
+    if filters.get("status"):
+        tickets = tickets.filter(status=filters["status"])
+    if filters.get("priority"):
+        tickets = tickets.filter(priority=filters["priority"])
+    if filters.get("category"):
+        tickets = tickets.filter(category=filters["category"])
     return (
-        Ticket.active_objects.filter(condominium=condominium)
-        .select_related("category", "unit", "created_by", "assigned_to")
+        tickets.select_related("category", "unit", "created_by", "assigned_to")
         .order_by("-created_at")
     )
 

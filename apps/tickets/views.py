@@ -5,7 +5,13 @@ from django.shortcuts import redirect, render
 
 from apps.core.permissions import require_condominium_manager
 
-from .forms import TicketAdminUpdateForm, TicketCategoryForm, TicketCommentForm, TicketCreateForm
+from .forms import (
+    TicketAdminFilterForm,
+    TicketAdminUpdateForm,
+    TicketCategoryForm,
+    TicketCommentForm,
+    TicketCreateForm,
+)
 from .selectors import (
     get_ticket_category_for_condominium,
     get_ticket_for_manager,
@@ -137,11 +143,16 @@ def admin_ticket_list(request):
     if response is not None:
         return response
     require_condominium_manager(request.user, condominium)
+    filter_form = TicketAdminFilterForm(request.GET or None, condominium=condominium)
+    filters = filter_form.cleaned_data if filter_form.is_valid() else {}
 
     return render(
         request,
         "tickets/admin_ticket_list.html",
-        {"tickets": list_tickets_for_manager(condominium=condominium)},
+        {
+            "filter_form": filter_form,
+            "tickets": list_tickets_for_manager(condominium=condominium, filters=filters),
+        },
     )
 
 

@@ -201,6 +201,239 @@ def test_manager_does_not_see_ticket_from_other_condominium(client, tickets_cont
 
 
 @pytest.mark.django_db
+def test_resident_cannot_access_admin_ticket_list(client, tickets_context):
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(reverse("tickets:admin_ticket_list"))
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_admin_ticket_list_filter_by_status(client, tickets_context):
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Ticket aberto",
+        status=TicketStatus.OPEN,
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Ticket em progresso",
+        status=TicketStatus.IN_PROGRESS,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(reverse("tickets:admin_ticket_list"), {"status": TicketStatus.OPEN})
+
+    assert response.status_code == 200
+    assert b"Ticket aberto" in response.content
+    assert b"Ticket em progresso" not in response.content
+
+
+@pytest.mark.django_db
+def test_admin_ticket_list_filter_by_priority(client, tickets_context):
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Ticket urgente",
+        priority=TicketPriority.URGENT,
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Ticket rotina",
+        priority=TicketPriority.NORMAL,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(
+        reverse("tickets:admin_ticket_list"),
+        {"priority": TicketPriority.URGENT},
+    )
+
+    assert response.status_code == 200
+    assert b"Ticket urgente" in response.content
+    assert b"Ticket rotina" not in response.content
+
+
+@pytest.mark.django_db
+def test_admin_ticket_list_filter_by_category(client, tickets_context):
+    second_category = TicketCategory.objects.create(
+        condominium=tickets_context["condo_a"],
+        name="Limpeza",
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Manutencao ticket",
+        category=tickets_context["category_a"],
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Limpeza ticket",
+        category=second_category,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(
+        reverse("tickets:admin_ticket_list"),
+        {"category": str(tickets_context["category_a"].id)},
+    )
+
+    assert response.status_code == 200
+    assert b"Manutencao ticket" in response.content
+    assert b"Limpeza ticket" not in response.content
+
+
+@pytest.mark.django_db
+def test_admin_ticket_list_combines_filters(client, tickets_context):
+    second_category = TicketCategory.objects.create(
+        condominium=tickets_context["condo_a"],
+        name="Limpeza",
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Alvo",
+        status=TicketStatus.IN_PROGRESS,
+        priority=TicketPriority.HIGH,
+        category=tickets_context["category_a"],
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Status diferente",
+        status=TicketStatus.OPEN,
+        priority=TicketPriority.HIGH,
+        category=tickets_context["category_a"],
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Prioridade diferente",
+        status=TicketStatus.IN_PROGRESS,
+        priority=TicketPriority.NORMAL,
+        category=tickets_context["category_a"],
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Categoria diferente",
+        status=TicketStatus.IN_PROGRESS,
+        priority=TicketPriority.HIGH,
+        category=second_category,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(
+        reverse("tickets:admin_ticket_list"),
+        {
+            "status": TicketStatus.IN_PROGRESS,
+            "priority": TicketPriority.HIGH,
+            "category": str(tickets_context["category_a"].id),
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"Alvo" in response.content
+    assert b"Status diferente" not in response.content
+    assert b"Prioridade diferente" not in response.content
+    assert b"Categoria diferente" not in response.content
+
+
+@pytest.mark.django_db
+def test_admin_ticket_filters_do_not_show_other_condominium_tickets(client, tickets_context):
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Condominio A",
+        status=TicketStatus.OPEN,
+    )
+    make_ticket(
+        condominium=tickets_context["condo_b"],
+        created_by=tickets_context["other_resident"],
+        title="Condominio B",
+        status=TicketStatus.OPEN,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(reverse("tickets:admin_ticket_list"), {"status": TicketStatus.OPEN})
+
+    assert response.status_code == 200
+    assert b"Condominio A" in response.content
+    assert b"Condominio B" not in response.content
+
+
+@pytest.mark.django_db
+def test_admin_ticket_filter_rejects_other_condominium_category_safely(
+    client,
+    tickets_context,
+):
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Condominio A",
+    )
+    make_ticket(
+        condominium=tickets_context["condo_b"],
+        created_by=tickets_context["other_resident"],
+        title="Condominio B",
+        category=tickets_context["category_b"],
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(
+        reverse("tickets:admin_ticket_list"),
+        {"category": str(tickets_context["category_b"].id)},
+    )
+
+    assert response.status_code == 200
+    assert b"Condominio A" in response.content
+    assert b"Condominio B" not in response.content
+
+
+@pytest.mark.django_db
+def test_admin_ticket_list_without_filters_lists_active_condominium_tickets(
+    client,
+    tickets_context,
+):
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["resident"],
+        title="Primeiro",
+    )
+    make_ticket(
+        condominium=tickets_context["condo_a"],
+        created_by=tickets_context["second_resident"],
+        title="Segundo",
+    )
+    make_ticket(
+        condominium=tickets_context["condo_b"],
+        created_by=tickets_context["other_resident"],
+        title="Outro condominio",
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, tickets_context["condo_a"])
+
+    response = client.get(reverse("tickets:admin_ticket_list"))
+
+    assert response.status_code == 200
+    assert b"Primeiro" in response.content
+    assert b"Segundo" in response.content
+    assert b"Outro condominio" not in response.content
+
+
+@pytest.mark.django_db
 def test_open_ticket_rejects_unit_from_other_condominium(client, tickets_context):
     client.login(username="resident", password="testpass123")
     activate_condominium(client, tickets_context["condo_a"])

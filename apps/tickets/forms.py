@@ -39,6 +39,26 @@ class TicketAdminUpdateForm(forms.Form):
         )
 
 
+class TicketAdminFilterForm(forms.Form):
+    status = forms.ChoiceField(
+        label="Status",
+        choices=[("", "Todos")] + list(TicketStatus.choices),
+        required=False,
+    )
+    priority = forms.ChoiceField(
+        label="Prioridade",
+        choices=[("", "Todas")] + list(TicketPriority.choices),
+        required=False,
+    )
+    category = forms.ModelChoiceField(label="Categoria", queryset=None, required=False)
+
+    def __init__(self, *args, condominium, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].queryset = list_ticket_categories_for_condominium(
+            condominium=condominium,
+        )
+
+
 class TicketCommentForm(forms.Form):
     message = forms.CharField(label="Comentario", widget=forms.Textarea)
     is_internal = forms.BooleanField(label="Comentario interno", required=False)
