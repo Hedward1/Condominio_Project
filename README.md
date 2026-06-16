@@ -1,84 +1,110 @@
 # Condominio Project
 
-Sistema modular de administração de condomínios, desenvolvido para centralizar comunicação, chamados, documentos, reservas e indicadores em uma plataforma simples, segura e transparente.
+Sistema web modular para administracao de condominios, construido como um monolito Django multi-tenant por condominio.
 
-## Objetivo
+O MVP funcional base ja cobre a rotina operacional principal: core do condominio, comunicacao oficial, chamados, documentos, reservas e dashboard do sindico.
 
-O projeto tem como objetivo criar uma plataforma web para ajudar síndicos, moradores, conselhos e pequenos administradores a organizar a rotina operacional do condomínio, reduzindo dependência de WhatsApp, planilhas, papel e controles manuais.
+## Modulos Entregues
 
-## Escopo inicial do MVP
+- Core: condominios, blocos, unidades, membros e moradores por unidade.
+- Comunicacao Oficial: categorias, comunicados, publicacao, arquivamento e leitura.
+- Chamados/Ocorrencias: categorias, abertura, comentarios, gestao, filtros e auditoria.
+- Documentos: categorias, upload protegido, visibilidade e download autorizado.
+- Reservas: areas comuns, solicitacao, aprovacao, rejeicao e cancelamento.
+- Dashboard: indicadores simples de core, comunicacao, chamados, documentos e reservas.
+- Auditoria: logs para acoes sensiveis.
 
-O MVP será focado nos seguintes módulos:
+## Principios
 
-- Core do condomínio;
-- Cadastro de blocos, unidades e moradores;
-- Comunicação oficial;
-- Chamados e ocorrências;
-- Documentos;
-- Reservas de áreas comuns;
-- Dashboard simples do síndico.
+- Todo dado operacional pertence a um condominio.
+- Toda query de negocio deve filtrar por condominio.
+- Permissoes sao aplicadas no backend.
+- Escritas passam por services.
+- Leituras passam por selectors.
+- Acoes sensiveis geram AuditLog.
+- Uploads e downloads passam por autorizacao.
+- O MVP evita boleto, banco, inadimplencia, assembleia formal, app nativo, portaria completa e IA avancada.
 
-## Fora do MVP inicial
+## Stack
 
-Para manter o escopo controlado, os seguintes itens não serão implementados na primeira versão:
+- Python 3.14
+- Django 6
+- Django REST Framework
+- PostgreSQL
+- Docker
+- Pytest
+- Ruff
+- Templates Django responsivos
 
-- Boleto;
-- Integração bancária;
-- Inadimplência;
-- Assembleia digital formal;
-- App mobile nativo;
-- Portaria completa;
-- IA avançada;
-- Customizações profundas por cliente.
-
-## Arquitetura planejada
-
-A arquitetura inicial será um monólito Django modular, com PostgreSQL e separação multi-tenant por condomínio.
-
-## Stack prevista
-
-- Python;
-- Django;
-- PostgreSQL;
-- Django REST Framework;
-- Docker;
-- Pytest;
-- HTMX ou frontend web responsivo simples.
-
-## Princípios do projeto
-
-- Simples antes de completo;
-- Modular antes de customizável demais;
-- Segurança e LGPD desde o primeiro commit;
-- Multi-tenant desde o início;
-- Histórico antes de conversa solta;
-- Dados antes de achismo;
-- Web responsivo antes de app nativo.
-
-## Primeiros comandos previstos
+## Setup Local
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -e ".[dev]"
+Copy-Item .env.example .env
 .\.venv\Scripts\python manage.py migrate
 .\.venv\Scripts\python manage.py runserver
 ```
 
-## Testes previstos
+Com Docker:
+
+```powershell
+docker compose up --build
+```
+
+## Dados Demo
+
+Depois de aplicar migrations, crie um condominio de demonstracao:
+
+```powershell
+.\.venv\Scripts\python manage.py seed_demo_condominium
+```
+
+Credenciais padrao criadas pelo comando:
+
+- Sindico: `sindico.demo@example.com`
+- Morador: `morador.demo@example.com`
+- Senha: `Demo@12345`
+
+O comando e idempotente e nao duplica dados quando executado mais de uma vez.
+Use `--password` para trocar a senha padrao em ambientes compartilhados.
+
+## Validacao
 
 ```powershell
 .\.venv\Scripts\python -m pytest
+.\.venv\Scripts\python -m ruff check .
+.\.venv\Scripts\python manage.py check
+.\.venv\Scripts\python manage.py makemigrations --check --dry-run
 ```
 
-## Documentação
+## Producao
 
-- [`CODEX.md`](CODEX.md): manual técnico para orientar o Codex e qualquer agente de desenvolvimento.
-- [`docs/product/strategy.md`](docs/product/strategy.md): estratégia de produto e escopo do MVP.
-- [`docs/technical/architecture.md`](docs/technical/architecture.md): arquitetura técnica planejada.
-- [`docs/technical/security.md`](docs/technical/security.md): segurança, permissões e LGPD.
-- [`docs/technical/testing.md`](docs/technical/testing.md): estratégia de testes.
-- [`docs/adr`](docs/adr): decisões arquiteturais registradas.
+Use `config.settings.production` e defina variaveis reais em ambiente seguro:
+
+```powershell
+$env:DJANGO_SETTINGS_MODULE="config.settings.production"
+$env:DJANGO_SECRET_KEY="..."
+$env:DJANGO_DEBUG="False"
+$env:DJANGO_ALLOWED_HOSTS="app.seudominio.com"
+$env:DJANGO_CSRF_TRUSTED_ORIGINS="https://app.seudominio.com"
+$env:DATABASE_URL="postgres://..."
+$env:DJANGO_STATIC_ROOT="/app/staticfiles"
+$env:DJANGO_MEDIA_ROOT="/app/media"
+```
+
+Consulte [docs/operations/deploy.md](docs/operations/deploy.md) antes de publicar.
+
+## Documentacao
+
+- [CODEX.md](CODEX.md): manual tecnico para desenvolvimento assistido.
+- [docs/mvp/checklist.md](docs/mvp/checklist.md): checklist do MVP funcional base.
+- [docs/operations/deploy.md](docs/operations/deploy.md): guia de deploy e producao.
+- [docs/technical/architecture.md](docs/technical/architecture.md): arquitetura tecnica.
+- [docs/technical/security.md](docs/technical/security.md): seguranca, permissoes e LGPD.
+- [docs/technical/testing.md](docs/technical/testing.md): estrategia de testes.
+- [docs/adr](docs/adr): decisoes arquiteturais.
 
 ## Status
 
-Projeto em fase inicial de documentação, validação e preparação técnica.
+MVP funcional base congelado tecnicamente para revisao, demonstracao e preparacao de deploy.
