@@ -1,0 +1,57 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Gerenciar Comunicados{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Gerenciar Comunicados</h1>
+    <a class="button" href="{% url 'communication:announcement_create' %}">Novo comunicado</a>
+  </div>
+  <section class="panel">
+    {% if announcements %}
+      <table>
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Status</th>
+            <th>Categoria</th>
+            <th>Publicado em</th>
+            <th>Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for announcement in announcements %}
+            <tr>
+              <td>
+                {{ announcement.title }}
+                {% if announcement.is_pinned %}<span class="muted">Fixado</span>{% endif %}
+              </td>
+              <td>{{ announcement.get_status_display }}</td>
+              <td class="muted">{{ announcement.category|default:"-" }}</td>
+              <td class="muted">{{ announcement.published_at|default:"-" }}</td>
+              <td>
+                <div class="actions">
+                  {% if announcement.status == "DRAFT" %}
+                    <a class="button secondary" href="{% url 'communication:announcement_update' announcement.id %}">Editar</a>
+                    <form method="post" action="{% url 'communication:announcement_publish' announcement.id %}">
+                      {% csrf_token %}
+                      <button class="button" type="submit">Publicar</button>
+                    </form>
+                  {% endif %}
+                  {% if announcement.status != "ARCHIVED" %}
+                    <form method="post" action="{% url 'communication:announcement_archive' announcement.id %}">
+                      {% csrf_token %}
+                      <button class="button danger" type="submit">Arquivar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum comunicado cadastrado.</p>
+    {% endif %}
+  </section>
+{% endblock %}

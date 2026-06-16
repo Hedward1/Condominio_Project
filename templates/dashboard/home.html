@@ -13,11 +13,23 @@
       <span class="muted">Moradores ativos</span>
       <strong>{{ summary.active_residents }}</strong>
     </div>
+    <div class="metric">
+      <span class="muted">Comunicados no mes</span>
+      <strong>{{ summary.published_announcements_this_month }}</strong>
+    </div>
+    <div class="metric">
+      <span class="muted">Leitura dos comunicados</span>
+      <strong>{{ summary.announcement_read_rate }}%</strong>
+    </div>
   </div>
   <p>
-    <a class="button secondary" href="{% url 'core:block_list' %}">Blocos</a>
-    <a class="button secondary" href="{% url 'core:unit_list' %}">Unidades</a>
-    <a class="button secondary" href="{% url 'core:membership_list' %}">Membros</a>
-    <a class="button secondary" href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
+    <a class="button secondary" href="{% url 'communication:mural' %}">Comunicados</a>
+    {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
+      <a class="button secondary" href="{% url 'core:block_list' %}">Blocos</a>
+      <a class="button secondary" href="{% url 'core:unit_list' %}">Unidades</a>
+      <a class="button secondary" href="{% url 'core:membership_list' %}">Membros</a>
+      <a class="button secondary" href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
+      <a class="button secondary" href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
+    {% endif %}
   </p>
 {% endblock %}

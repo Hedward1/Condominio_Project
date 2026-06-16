@@ -1,0 +1,36 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Comunicados{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Comunicados</h1>
+  </div>
+  <section class="panel">
+    {% if announcements %}
+      <table>
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Categoria</th>
+            <th>Publicado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for announcement in announcements %}
+            <tr>
+              <td>
+                <a href="{% url 'communication:announcement_detail' announcement.id %}">{{ announcement.title }}</a>
+                {% if announcement.is_pinned %}<span class="muted">Fixado</span>{% endif %}
+              </td>
+              <td class="muted">{{ announcement.category|default:"-" }}</td>
+              <td class="muted">{{ announcement.published_at|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum comunicado publicado.</p>
+    {% endif %}
+  </section>
+{% endblock %}

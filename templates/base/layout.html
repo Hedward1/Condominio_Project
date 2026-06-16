@@ -201,12 +201,14 @@
         {% if request.user.is_authenticated %}
           {% if request.condominium %}
             <a href="{% url 'dashboard:home' %}">Dashboard</a>
+            <a href="{% url 'communication:mural' %}">Comunicados</a>
           {% endif %}
           {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
             <a href="{% url 'core:block_list' %}">Blocos</a>
             <a href="{% url 'core:unit_list' %}">Unidades</a>
             <a href="{% url 'core:membership_list' %}">Membros</a>
             <a href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
+            <a href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
           {% endif %}
           <a href="{% url 'core:condominium_select' %}">Trocar condominio</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline">

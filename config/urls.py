@@ -7,5 +7,6 @@ urlpatterns = [
     path("auth/login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
     path("auth/logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("condominiums/", include("apps.core.urls")),
+    path("communication/", include("apps.communication.urls")),
     path("", include("apps.dashboard.urls")),
 ]
