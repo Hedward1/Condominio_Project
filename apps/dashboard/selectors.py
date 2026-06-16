@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from apps.communication.models import Announcement, AnnouncementReadReceipt, AnnouncementStatus
 from apps.core.models import CondominiumMembership, CondominiumRole, Unit
+from apps.tickets.models import Ticket, TicketStatus
 
 RESIDENT_SUMMARY_ROLES = [
     CondominiumRole.RESIDENT,
@@ -34,6 +35,7 @@ def get_syndic_dashboard_summary(*, condominium) -> dict:
         .get("total")
         or 0
     )
+    tickets = Ticket.active_objects.filter(condominium=condominium)
 
     return {
         "total_units": Unit.active_objects.filter(condominium=condominium).count(),
@@ -43,4 +45,10 @@ def get_syndic_dashboard_summary(*, condominium) -> dict:
         ).count(),
         "published_announcements_this_month": published_this_month,
         "announcement_read_rate": round((actual_reads / possible_reads) * 100) if possible_reads else 0,
+        "open_tickets": tickets.filter(status=TicketStatus.OPEN).count(),
+        "tickets_in_progress": tickets.filter(status=TicketStatus.IN_PROGRESS).count(),
+        "tickets_resolved_this_month": tickets.filter(
+            status=TicketStatus.RESOLVED,
+            resolved_at__gte=start_of_month,
+        ).count(),
     }

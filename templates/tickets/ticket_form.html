@@ -1,0 +1,17 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Abrir chamado{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Abrir chamado</h1>
+    <a class="button secondary" href="{% url 'tickets:ticket_list' %}">Voltar</a>
+  </div>
+  <section class="panel">
+    <form method="post">
+      {% csrf_token %}
+      {% include "core/_form_fields.html" %}
+      <button class="button" type="submit">Abrir chamado</button>
+    </form>
+  </section>
+{% endblock %}

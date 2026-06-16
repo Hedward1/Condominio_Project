@@ -1,0 +1,38 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Meus Chamados{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Meus Chamados</h1>
+    <a class="button" href="{% url 'tickets:ticket_create' %}">Abrir chamado</a>
+  </div>
+  <section class="panel">
+    {% if tickets %}
+      <table>
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Status</th>
+            <th>Prioridade</th>
+            <th>Unidade</th>
+            <th>Criado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in tickets %}
+            <tr>
+              <td><a href="{% url 'tickets:ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
+              <td>{{ ticket.get_status_display }}</td>
+              <td>{{ ticket.get_priority_display }}</td>
+              <td class="muted">{{ ticket.unit|default:"-" }}</td>
+              <td class="muted">{{ ticket.created_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum chamado aberto por voce.</p>
+    {% endif %}
+  </section>
+{% endblock %}
