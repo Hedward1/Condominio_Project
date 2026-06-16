@@ -209,6 +209,7 @@
             <a href="{% url 'core:membership_list' %}">Membros</a>
             <a href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
             <a href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
+            <a href="{% url 'communication:category_list' %}">Categorias</a>
           {% endif %}
           <a href="{% url 'core:condominium_select' %}">Trocar condominio</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline">

@@ -5,6 +5,18 @@ from . import views
 app_name = "communication"
 
 urlpatterns = [
+    path("admin/categories/", views.category_list, name="category_list"),
+    path("admin/categories/new/", views.category_create, name="category_create"),
+    path(
+        "admin/categories/<uuid:category_id>/edit/",
+        views.category_update,
+        name="category_update",
+    ),
+    path(
+        "admin/categories/<uuid:category_id>/deactivate/",
+        views.category_deactivate,
+        name="category_deactivate",
+    ),
     path("admin/announcements/", views.admin_announcement_list, name="admin_announcement_list"),
     path("admin/announcements/new/", views.announcement_create, name="announcement_create"),
     path(

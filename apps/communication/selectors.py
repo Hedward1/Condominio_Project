@@ -7,6 +7,16 @@ def list_categories_for_condominium(*, condominium):
     return AnnouncementCategory.active_objects.filter(condominium=condominium).order_by("name")
 
 
+def get_category_for_condominium(*, condominium, category_id):
+    category = AnnouncementCategory.active_objects.filter(
+        id=category_id,
+        condominium=condominium,
+    ).first()
+    if category is None:
+        raise Http404("Categoria nao encontrada.")
+    return category
+
+
 def list_admin_announcements_for_condominium(*, condominium):
     return (
         Announcement.active_objects.filter(condominium=condominium)

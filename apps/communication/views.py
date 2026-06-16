@@ -2,23 +2,29 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from apps.core.permissions import require_condominium_manager
 
-from .forms import AnnouncementForm
+from .forms import AnnouncementCategoryForm, AnnouncementForm
 from .selectors import (
     get_announcement_for_condominium,
+    get_category_for_condominium,
     get_draft_announcement_for_condominium,
     get_published_announcement_for_condominium,
     has_user_read_announcement,
     list_admin_announcements_for_condominium,
+    list_categories_for_condominium,
     list_published_announcements_for_condominium,
 )
 from .services import (
     archive_announcement,
     create_announcement,
+    create_category,
+    deactivate_category,
     mark_announcement_as_read,
     publish_announcement,
+    update_category,
     update_draft_announcement,
 )
 
@@ -41,6 +47,107 @@ def _add_validation_error(form, error):
 
 def _message_validation_error(request, error):
     messages.error(request, "; ".join(error.messages))
+
+
+@login_required
+def category_list(request):
+    condominium, response = _active_condominium_or_redirect(request)
+    if response is not None:
+        return response
+    require_condominium_manager(request.user, condominium)
+
+    return render(
+        request,
+        "communication/category_list.html",
+        {"categories": list_categories_for_condominium(condominium=condominium)},
+    )
+
+
+@login_required
+def category_create(request):
+    condominium, response = _active_condominium_or_redirect(request)
+    if response is not None:
+        return response
+    require_condominium_manager(request.user, condominium)
+
+    form = AnnouncementCategoryForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            create_category(
+                condominium=condominium,
+                actor=request.user,
+                name=form.cleaned_data["name"],
+                description=form.cleaned_data["description"],
+            )
+        except ValidationError as error:
+            _add_validation_error(form, error)
+        else:
+            messages.success(request, "Categoria cadastrada.")
+            return redirect("communication:category_list")
+
+    return render(request, "communication/category_form.html", {"form": form})
+
+
+@login_required
+def category_update(request, category_id):
+    condominium, response = _active_condominium_or_redirect(request)
+    if response is not None:
+        return response
+    require_condominium_manager(request.user, condominium)
+    category = get_category_for_condominium(condominium=condominium, category_id=category_id)
+
+    form = AnnouncementCategoryForm(
+        request.POST or None,
+        initial={"name": category.name, "description": category.description},
+    )
+    if request.method == "POST" and form.is_valid():
+        try:
+            update_category(
+                condominium=condominium,
+                actor=request.user,
+                category=category,
+                name=form.cleaned_data["name"],
+                description=form.cleaned_data["description"],
+            )
+        except ValidationError as error:
+            _add_validation_error(form, error)
+        else:
+            messages.success(request, "Categoria atualizada.")
+            return redirect("communication:category_list")
+
+    return render(
+        request,
+        "communication/category_form.html",
+        {"form": form, "is_update": True},
+    )
+
+
+@login_required
+def category_deactivate(request, category_id):
+    condominium, response = _active_condominium_or_redirect(request)
+    if response is not None:
+        return response
+    require_condominium_manager(request.user, condominium)
+    category = get_category_for_condominium(condominium=condominium, category_id=category_id)
+
+    if request.method == "POST":
+        try:
+            deactivate_category(condominium=condominium, actor=request.user, category=category)
+        except ValidationError as error:
+            _message_validation_error(request, error)
+        else:
+            messages.success(request, "Categoria desativada.")
+            return redirect("communication:category_list")
+
+    return render(
+        request,
+        "core/deactivate_confirm.html",
+        {
+            "title": "Desativar categoria",
+            "object_label": category.name,
+            "cancel_url_name": "communication:category_list",
+        },
+    )
 
 
 @login_required
@@ -134,6 +241,7 @@ def announcement_update(request, announcement_id):
 
 
 @login_required
+@require_POST
 def announcement_publish(request, announcement_id):
     condominium, response = _active_condominium_or_redirect(request)
     if response is not None:
@@ -144,21 +252,21 @@ def announcement_publish(request, announcement_id):
         announcement_id=announcement_id,
     )
 
-    if request.method == "POST":
-        try:
-            publish_announcement(
-                condominium=condominium,
-                actor=request.user,
-                announcement=announcement,
-            )
-        except ValidationError as error:
-            _message_validation_error(request, error)
-        else:
-            messages.success(request, "Comunicado publicado.")
+    try:
+        publish_announcement(
+            condominium=condominium,
+            actor=request.user,
+            announcement=announcement,
+        )
+    except ValidationError as error:
+        _message_validation_error(request, error)
+    else:
+        messages.success(request, "Comunicado publicado.")
     return redirect("communication:admin_announcement_list")
 
 
 @login_required
+@require_POST
 def announcement_archive(request, announcement_id):
     condominium, response = _active_condominium_or_redirect(request)
     if response is not None:
@@ -169,17 +277,16 @@ def announcement_archive(request, announcement_id):
         announcement_id=announcement_id,
     )
 
-    if request.method == "POST":
-        try:
-            archive_announcement(
-                condominium=condominium,
-                actor=request.user,
-                announcement=announcement,
-            )
-        except ValidationError as error:
-            _message_validation_error(request, error)
-        else:
-            messages.success(request, "Comunicado arquivado.")
+    try:
+        archive_announcement(
+            condominium=condominium,
+            actor=request.user,
+            announcement=announcement,
+        )
+    except ValidationError as error:
+        _message_validation_error(request, error)
+    else:
+        messages.success(request, "Comunicado arquivado.")
     return redirect("communication:admin_announcement_list")
 
 
@@ -225,6 +332,7 @@ def announcement_detail(request, announcement_id):
 
 
 @login_required
+@require_POST
 def announcement_mark_read(request, announcement_id):
     condominium, response = _active_condominium_or_redirect(request)
     if response is not None:
@@ -234,15 +342,14 @@ def announcement_mark_read(request, announcement_id):
         announcement_id=announcement_id,
     )
 
-    if request.method == "POST":
-        try:
-            mark_announcement_as_read(
-                condominium=condominium,
-                user=request.user,
-                announcement=announcement,
-            )
-        except ValidationError as error:
-            _message_validation_error(request, error)
-        else:
-            messages.success(request, "Leitura confirmada.")
+    try:
+        mark_announcement_as_read(
+            condominium=condominium,
+            user=request.user,
+            announcement=announcement,
+        )
+    except ValidationError as error:
+        _message_validation_error(request, error)
+    else:
+        messages.success(request, "Leitura confirmada.")
     return redirect("communication:announcement_detail", announcement_id=announcement.id)

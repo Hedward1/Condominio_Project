@@ -27,6 +27,120 @@ def _validate_category_condominium(
         raise ValidationError({"category": "A categoria pertence a outro condominio."})
 
 
+def _validate_unique_active_category_name(
+    *,
+    condominium,
+    name: str,
+    category: AnnouncementCategory | None = None,
+):
+    duplicate_query = AnnouncementCategory.active_objects.filter(
+        condominium=condominium,
+        name__iexact=name.strip(),
+    )
+    if category is not None:
+        duplicate_query = duplicate_query.exclude(id=category.id)
+    if duplicate_query.exists():
+        raise ValidationError({"name": "Ja existe uma categoria ativa com este nome."})
+
+
+@transaction.atomic
+def create_category(
+    *,
+    condominium,
+    actor,
+    name: str,
+    description: str = "",
+) -> AnnouncementCategory:
+    require_condominium_manager(actor, condominium)
+    _validate_unique_active_category_name(condominium=condominium, name=name)
+
+    category = AnnouncementCategory(
+        condominium=condominium,
+        name=name.strip(),
+        description=description,
+        created_by=actor,
+        updated_by=actor,
+    )
+    category.full_clean()
+    category.save()
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="communication.announcement_category.created",
+        target=category,
+    )
+    return category
+
+
+@transaction.atomic
+def update_category(
+    *,
+    condominium,
+    actor,
+    category: AnnouncementCategory,
+    name: str,
+    description: str = "",
+) -> AnnouncementCategory:
+    require_condominium_manager(actor, condominium)
+    _validate_category_condominium(condominium=condominium, category=category)
+    _validate_unique_active_category_name(
+        condominium=condominium,
+        name=name,
+        category=category,
+    )
+
+    changes = {
+        "name": {"from": category.name, "to": name.strip()},
+        "description": {"from": category.description, "to": description},
+    }
+    category.name = name.strip()
+    category.description = description
+    category.updated_by = actor
+    category.full_clean()
+    category.save(update_fields=["name", "description", "updated_by", "updated_at"])
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="communication.announcement_category.updated",
+        target=category,
+        changes=changes,
+    )
+    return category
+
+
+@transaction.atomic
+def deactivate_category(
+    *,
+    condominium,
+    actor,
+    category: AnnouncementCategory,
+) -> AnnouncementCategory:
+    require_condominium_manager(actor, condominium)
+    _validate_category_condominium(condominium=condominium, category=category)
+    if (
+        Announcement.active_objects.filter(condominium=condominium, category=category)
+        .exclude(status=AnnouncementStatus.ARCHIVED)
+        .exists()
+    ):
+        raise ValidationError(
+            {
+                "category": (
+                    "Esta categoria possui comunicados ativos. "
+                    "Remova ou arquive os comunicados relacionados primeiro."
+                ),
+            },
+        )
+
+    category.soft_delete(user=actor)
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="communication.announcement_category.deactivated",
+        target=category,
+    )
+    return category
+
+
 @transaction.atomic
 def create_announcement(
     *,

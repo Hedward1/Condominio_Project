@@ -14,6 +14,7 @@ from apps.communication.selectors import list_published_announcements_for_condom
 from apps.communication.services import create_announcement, publish_announcement
 from apps.core.middleware import ACTIVE_CONDOMINIUM_SESSION_KEY
 from apps.core.models import Condominium, CondominiumMembership, CondominiumRole
+from apps.dashboard.selectors import get_syndic_dashboard_summary
 
 
 def activate_condominium(client, condominium):
@@ -74,6 +75,214 @@ def test_resident_cannot_access_announcement_admin(client, communication_context
     response = client.get(reverse("communication:admin_announcement_list"))
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_resident_cannot_access_category_management(client, communication_context):
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.get(reverse("communication:category_list"))
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_syndic_creates_category_with_audit_log(client, communication_context):
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.post(
+        reverse("communication:category_create"),
+        {"name": "Avisos Gerais", "description": "Comunicados gerais"},
+    )
+
+    assert response.status_code == 302
+    category = AnnouncementCategory.objects.get(
+        condominium=communication_context["condo_a"],
+        name="Avisos Gerais",
+    )
+    assert category.description == "Comunicados gerais"
+    assert AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
+        actor=communication_context["syndic"],
+        action="communication.announcement_category.created",
+        object_id=str(category.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_syndic_edits_category_with_audit_log(client, communication_context):
+    category = AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_a"],
+        name="Antigo",
+        description="Texto antigo",
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.post(
+        reverse("communication:category_update", args=[category.id]),
+        {"name": "Novo", "description": "Texto novo"},
+    )
+
+    assert response.status_code == 302
+    category.refresh_from_db()
+    assert category.name == "Novo"
+    assert category.description == "Texto novo"
+    assert AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
+        actor=communication_context["syndic"],
+        action="communication.announcement_category.updated",
+        object_id=str(category.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_syndic_deactivates_category_with_audit_log(client, communication_context):
+    category = AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_a"],
+        name="Obras",
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.post(reverse("communication:category_deactivate", args=[category.id]))
+
+    assert response.status_code == 302
+    category.refresh_from_db()
+    assert category.is_active is False
+    assert AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
+        actor=communication_context["syndic"],
+        action="communication.announcement_category.deactivated",
+        object_id=str(category.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_category_from_other_condominium_is_not_accessible(client, communication_context):
+    other_category = AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_b"],
+        name="Outro condominio",
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    update_response = client.get(
+        reverse("communication:category_update", args=[other_category.id]),
+    )
+    deactivate_response = client.post(
+        reverse("communication:category_deactivate", args=[other_category.id]),
+    )
+
+    assert update_response.status_code == 404
+    assert deactivate_response.status_code == 404
+    other_category.refresh_from_db()
+    assert other_category.is_active is True
+
+
+@pytest.mark.django_db
+def test_category_list_shows_only_active_condominium_categories(client, communication_context):
+    AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_a"],
+        name="Categoria A",
+    )
+    AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_b"],
+        name="Categoria B",
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.get(reverse("communication:category_list"))
+
+    assert response.status_code == 200
+    assert b"Categoria A" in response.content
+    assert b"Categoria B" not in response.content
+
+
+@pytest.mark.django_db
+def test_category_with_active_announcement_cannot_be_deactivated(client, communication_context):
+    category = AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_a"],
+        name="Assembleia",
+    )
+    Announcement.objects.create(
+        condominium=communication_context["condo_a"],
+        category=category,
+        title="Aviso ativo",
+        content="Conteudo",
+        status=AnnouncementStatus.PUBLISHED,
+        published_at=timezone.now(),
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.post(reverse("communication:category_deactivate", args=[category.id]))
+
+    assert response.status_code == 200
+    category.refresh_from_db()
+    assert category.is_active is True
+    assert not AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
+        action="communication.announcement_category.deactivated",
+        object_id=str(category.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_category_with_only_archived_announcements_can_be_deactivated(
+    client,
+    communication_context,
+):
+    category = AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_a"],
+        name="Historico",
+    )
+    Announcement.objects.create(
+        condominium=communication_context["condo_a"],
+        category=category,
+        title="Aviso arquivado",
+        content="Conteudo",
+        status=AnnouncementStatus.ARCHIVED,
+        published_at=timezone.now(),
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.post(reverse("communication:category_deactivate", args=[category.id]))
+
+    assert response.status_code == 302
+    category.refresh_from_db()
+    assert category.is_active is False
+    assert AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
+        actor=communication_context["syndic"],
+        action="communication.announcement_category.deactivated",
+        object_id=str(category.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_duplicate_active_category_name_is_rejected(client, communication_context):
+    AnnouncementCategory.objects.create(
+        condominium=communication_context["condo_a"],
+        name="Avisos Gerais",
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.post(
+        reverse("communication:category_create"),
+        {"name": "avisos gerais", "description": "Duplicada"},
+    )
+
+    assert response.status_code == 200
+    assert AnnouncementCategory.active_objects.filter(
+        condominium=communication_context["condo_a"],
+        name__iexact="Avisos Gerais",
+    ).count() == 1
 
 
 @pytest.mark.django_db
@@ -155,6 +364,29 @@ def test_syndic_publishes_announcement_with_audit_log(client, communication_cont
 
 
 @pytest.mark.django_db
+def test_get_publish_does_not_publish_announcement(client, communication_context):
+    announcement = Announcement.objects.create(
+        condominium=communication_context["condo_a"],
+        title="Draft Notice",
+        content="Publish me",
+        status=AnnouncementStatus.DRAFT,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.get(reverse("communication:announcement_publish", args=[announcement.id]))
+
+    assert response.status_code == 405
+    announcement.refresh_from_db()
+    assert announcement.status == AnnouncementStatus.DRAFT
+    assert not AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
+        action="communication.announcement.published",
+        object_id=str(announcement.id),
+    ).exists()
+
+
+@pytest.mark.django_db
 def test_syndic_archives_announcement_with_audit_log(client, communication_context):
     announcement = create_published_announcement(
         condominium=communication_context["condo_a"],
@@ -171,6 +403,27 @@ def test_syndic_archives_announcement_with_audit_log(client, communication_conte
     assert AuditLog.objects.filter(
         condominium=communication_context["condo_a"],
         actor=communication_context["syndic"],
+        action="communication.announcement.archived",
+        object_id=str(announcement.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_get_archive_does_not_archive_announcement(client, communication_context):
+    announcement = create_published_announcement(
+        condominium=communication_context["condo_a"],
+        actor=communication_context["syndic"],
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.get(reverse("communication:announcement_archive", args=[announcement.id]))
+
+    assert response.status_code == 405
+    announcement.refresh_from_db()
+    assert announcement.status == AnnouncementStatus.PUBLISHED
+    assert not AuditLog.objects.filter(
+        condominium=communication_context["condo_a"],
         action="communication.announcement.archived",
         object_id=str(announcement.id),
     ).exists()
@@ -244,6 +497,22 @@ def test_mark_as_read_creates_read_receipt(client, communication_context):
 
 
 @pytest.mark.django_db
+def test_get_mark_as_read_does_not_create_read_receipt(client, communication_context):
+    announcement = create_published_announcement(condominium=communication_context["condo_a"])
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, communication_context["condo_a"])
+
+    response = client.get(reverse("communication:announcement_mark_read", args=[announcement.id]))
+
+    assert response.status_code == 405
+    assert not AnnouncementReadReceipt.objects.filter(
+        condominium=communication_context["condo_a"],
+        announcement=announcement,
+        user=communication_context["resident"],
+    ).exists()
+
+
+@pytest.mark.django_db
 def test_mark_as_read_twice_does_not_duplicate_receipt(client, communication_context):
     announcement = create_published_announcement(condominium=communication_context["condo_a"])
     client.login(username="resident", password="testpass123")
@@ -309,3 +578,56 @@ def test_announcement_services_block_cross_tenant_actions(communication_context)
 
     announcement_b.refresh_from_db()
     assert announcement_b.status == AnnouncementStatus.DRAFT
+
+
+@pytest.mark.django_db
+def test_dashboard_communication_indicators_do_not_divide_by_zero(communication_context):
+    summary = get_syndic_dashboard_summary(condominium=communication_context["condo_a"])
+
+    assert summary["published_announcements_this_month"] == 0
+    assert summary["announcement_read_rate"] == 0
+
+
+@pytest.mark.django_db
+def test_dashboard_handles_published_announcements_without_reads(communication_context):
+    create_published_announcement(condominium=communication_context["condo_a"])
+
+    summary = get_syndic_dashboard_summary(condominium=communication_context["condo_a"])
+
+    assert summary["published_announcements_this_month"] == 1
+    assert summary["announcement_read_rate"] == 0
+
+
+@pytest.mark.django_db
+def test_dashboard_ignores_drafts_and_archived_announcements_for_read_rate(
+    communication_context,
+):
+    published = create_published_announcement(condominium=communication_context["condo_a"])
+    archived = Announcement.objects.create(
+        condominium=communication_context["condo_a"],
+        title="Arquivado",
+        content="Conteudo arquivado",
+        status=AnnouncementStatus.ARCHIVED,
+        published_at=timezone.now(),
+    )
+    Announcement.objects.create(
+        condominium=communication_context["condo_a"],
+        title="Rascunho",
+        content="Conteudo rascunho",
+        status=AnnouncementStatus.DRAFT,
+    )
+    AnnouncementReadReceipt.objects.create(
+        condominium=communication_context["condo_a"],
+        announcement=published,
+        user=communication_context["resident"],
+    )
+    AnnouncementReadReceipt.objects.create(
+        condominium=communication_context["condo_a"],
+        announcement=archived,
+        user=communication_context["syndic"],
+    )
+
+    summary = get_syndic_dashboard_summary(condominium=communication_context["condo_a"])
+
+    assert summary["published_announcements_this_month"] == 1
+    assert summary["announcement_read_rate"] == 50

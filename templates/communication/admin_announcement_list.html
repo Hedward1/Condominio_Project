@@ -5,7 +5,10 @@
 {% block content %}
   <div class="page-header">
     <h1>Gerenciar Comunicados</h1>
-    <a class="button" href="{% url 'communication:announcement_create' %}">Novo comunicado</a>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'communication:category_list' %}">Categorias</a>
+      <a class="button" href="{% url 'communication:announcement_create' %}">Novo comunicado</a>
+    </div>
   </div>
   <section class="panel">
     {% if announcements %}
@@ -35,13 +38,13 @@
                     <a class="button secondary" href="{% url 'communication:announcement_update' announcement.id %}">Editar</a>
                     <form method="post" action="{% url 'communication:announcement_publish' announcement.id %}">
                       {% csrf_token %}
-                      <button class="button" type="submit">Publicar</button>
+                      <button class="button" type="submit" onclick="return confirm('Publicar este comunicado agora?')">Publicar</button>
                     </form>
                   {% endif %}
                   {% if announcement.status != "ARCHIVED" %}
                     <form method="post" action="{% url 'communication:announcement_archive' announcement.id %}">
                       {% csrf_token %}
-                      <button class="button danger" type="submit">Arquivar</button>
+                      <button class="button danger" type="submit" onclick="return confirm('Arquivar este comunicado?')">Arquivar</button>
                     </form>
                   {% endif %}
                 </div>

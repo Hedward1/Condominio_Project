@@ -1,0 +1,42 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Categorias de Comunicados{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Categorias de Comunicados</h1>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'communication:admin_announcement_list' %}">Comunicados</a>
+      <a class="button" href="{% url 'communication:category_create' %}">Nova categoria</a>
+    </div>
+  </div>
+  <section class="panel">
+    {% if categories %}
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Descricao</th>
+            <th>Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category in categories %}
+            <tr>
+              <td>{{ category.name }}</td>
+              <td class="muted">{{ category.description|default:"-" }}</td>
+              <td>
+                <div class="actions">
+                  <a class="button secondary" href="{% url 'communication:category_update' category.id %}">Editar</a>
+                  <a class="button danger" href="{% url 'communication:category_deactivate' category.id %}">Desativar</a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhuma categoria cadastrada.</p>
+    {% endif %}
+  </section>
+{% endblock %}
