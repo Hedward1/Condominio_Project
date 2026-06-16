@@ -15,6 +15,7 @@
             <th>Nome</th>
             <th>E-mail</th>
             <th>Papel</th>
+            <th>Acoes</th>
           </tr>
         </thead>
         <tbody>
@@ -23,6 +24,11 @@
               <td>{{ membership.user.get_full_name|default:membership.user.username }}</td>
               <td>{{ membership.user.email }}</td>
               <td>{{ membership.get_role_display }}</td>
+              <td>
+                <div class="actions">
+                  <a class="button danger" href="{% url 'core:membership_deactivate' membership.id %}">Desativar</a>
+                </div>
+              </td>
             </tr>
           {% endfor %}
         </tbody>

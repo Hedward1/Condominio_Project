@@ -107,6 +107,18 @@
         color: var(--primary-dark);
       }
 
+      .button.danger {
+        border-color: #b91c1c;
+        background: #b91c1c;
+        color: #ffffff;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
       select,
       input,
       textarea {
@@ -194,7 +206,7 @@
             <a href="{% url 'core:block_list' %}">Blocos</a>
             <a href="{% url 'core:unit_list' %}">Unidades</a>
             <a href="{% url 'core:membership_list' %}">Membros</a>
-            <a href="{% url 'core:unit_occupancy_list' %}">Vinculos</a>
+            <a href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
           {% endif %}
           <a href="{% url 'core:condominium_select' %}">Trocar condominio</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline">

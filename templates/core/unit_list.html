@@ -15,6 +15,7 @@
             <th>Numero</th>
             <th>Bloco</th>
             <th>Andar</th>
+            <th>Acoes</th>
           </tr>
         </thead>
         <tbody>
@@ -23,6 +24,12 @@
               <td>{{ unit.number }}</td>
               <td>{{ unit.block.name|default:"-" }}</td>
               <td class="muted">{{ unit.floor|default:"-" }}</td>
+              <td>
+                <div class="actions">
+                  <a class="button secondary" href="{% url 'core:unit_update' unit.id %}">Editar</a>
+                  <a class="button danger" href="{% url 'core:unit_deactivate' unit.id %}">Desativar</a>
+                </div>
+              </td>
             </tr>
           {% endfor %}
         </tbody>

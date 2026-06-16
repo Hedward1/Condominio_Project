@@ -1,0 +1,18 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>{{ title }}</h1>
+    <a class="button secondary" href="{% url cancel_url_name %}">Voltar</a>
+  </div>
+  <section class="panel">
+    <p>Confirme a desativacao de <strong>{{ object_label }}</strong>.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button class="button danger" type="submit">Desativar</button>
+      <a class="button secondary" href="{% url cancel_url_name %}">Cancelar</a>
+    </form>
+  </section>
+{% endblock %}

@@ -28,7 +28,7 @@ class UnitForm(forms.Form):
 class UnitOccupancyForm(forms.Form):
     unit = forms.ModelChoiceField(label="Unidade", queryset=None)
     user = forms.ModelChoiceField(label="Membro", queryset=None)
-    occupancy_type = forms.ChoiceField(label="Tipo de vinculo", choices=OccupancyType.choices)
+    occupancy_type = forms.ChoiceField(label="Tipo de morador", choices=OccupancyType.choices)
     is_primary = forms.BooleanField(label="Responsavel principal", required=False)
     starts_at = forms.DateField(
         label="Inicio",

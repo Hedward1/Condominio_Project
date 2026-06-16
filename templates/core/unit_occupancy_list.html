@@ -1,11 +1,11 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Vinculos{% endblock %}
+{% block title %}Moradores por Unidade{% endblock %}
 
 {% block content %}
   <div class="page-header">
-    <h1>Vinculos</h1>
-    <a class="button" href="{% url 'core:unit_occupancy_create' %}">Novo vinculo</a>
+    <h1>Moradores por Unidade</h1>
+    <a class="button" href="{% url 'core:unit_occupancy_create' %}">Novo morador por unidade</a>
   </div>
   <section class="panel">
     {% if occupancies %}
@@ -17,6 +17,7 @@
             <th>Tipo</th>
             <th>Principal</th>
             <th>Periodo</th>
+            <th>Acoes</th>
           </tr>
         </thead>
         <tbody>
@@ -29,12 +30,17 @@
               <td class="muted">
                 {{ occupancy.starts_at|default:"-" }}{% if occupancy.ends_at %} ate {{ occupancy.ends_at }}{% endif %}
               </td>
+              <td>
+                <div class="actions">
+                  <a class="button danger" href="{% url 'core:unit_occupancy_deactivate' occupancy.id %}">Desativar</a>
+                </div>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum vinculo cadastrado.</p>
+      <p class="muted">Nenhum morador por unidade cadastrado.</p>
     {% endif %}
   </section>
 {% endblock %}

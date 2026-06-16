@@ -27,6 +27,11 @@ ASSIGNABLE_MEMBERSHIP_ROLES = {
     CondominiumRole.TENANT,
 }
 
+MANAGER_MEMBERSHIP_ROLES = {
+    CondominiumRole.CONDO_ADMIN,
+    CondominiumRole.SYNDIC,
+}
+
 
 @transaction.atomic
 def create_condominium(
@@ -101,6 +106,54 @@ def create_block(*, condominium: Condominium, actor, name: str, description: str
 
 
 @transaction.atomic
+def update_block(
+    *,
+    condominium: Condominium,
+    actor,
+    block: Block,
+    name: str,
+    description: str = "",
+) -> Block:
+    require_condominium_manager(actor, condominium)
+    if block.condominium_id != condominium.id:
+        raise ValidationError({"block": "O bloco pertence a outro condominio."})
+
+    changes = {
+        "name": {"from": block.name, "to": name},
+        "description": {"from": block.description, "to": description},
+    }
+    block.name = name
+    block.description = description
+    block.updated_by = actor
+    block.full_clean()
+    block.save(update_fields=["name", "description", "updated_by", "updated_at"])
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="core.block.updated",
+        target=block,
+        changes=changes,
+    )
+    return block
+
+
+@transaction.atomic
+def deactivate_block(*, condominium: Condominium, actor, block: Block) -> Block:
+    require_condominium_manager(actor, condominium)
+    if block.condominium_id != condominium.id:
+        raise ValidationError({"block": "O bloco pertence a outro condominio."})
+
+    block.soft_delete(user=actor)
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="core.block.deactivated",
+        target=block,
+    )
+    return block
+
+
+@transaction.atomic
 def create_unit(
     *,
     condominium: Condominium,
@@ -129,6 +182,71 @@ def create_unit(
         condominium=condominium,
         actor=actor,
         action="core.unit.created",
+        target=unit,
+    )
+    return unit
+
+
+@transaction.atomic
+def update_unit(
+    *,
+    condominium: Condominium,
+    actor,
+    unit: Unit,
+    number: str,
+    block: Block | None = None,
+    floor: str = "",
+    description: str = "",
+) -> Unit:
+    require_condominium_manager(actor, condominium)
+    if unit.condominium_id != condominium.id:
+        raise ValidationError({"unit": "A unidade pertence a outro condominio."})
+    if block is not None and block.condominium_id != condominium.id:
+        raise ValidationError({"block": "O bloco pertence a outro condominio."})
+
+    changes = {
+        "block_id": {"from": str(unit.block_id or ""), "to": str(block.id if block else "")},
+        "number": {"from": unit.number, "to": number},
+        "floor": {"from": unit.floor, "to": floor},
+        "description": {"from": unit.description, "to": description},
+    }
+    unit.block = block
+    unit.number = number
+    unit.floor = floor
+    unit.description = description
+    unit.updated_by = actor
+    unit.full_clean()
+    unit.save(
+        update_fields=[
+            "block",
+            "number",
+            "floor",
+            "description",
+            "updated_by",
+            "updated_at",
+        ],
+    )
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="core.unit.updated",
+        target=unit,
+        changes=changes,
+    )
+    return unit
+
+
+@transaction.atomic
+def deactivate_unit(*, condominium: Condominium, actor, unit: Unit) -> Unit:
+    require_condominium_manager(actor, condominium)
+    if unit.condominium_id != condominium.id:
+        raise ValidationError({"unit": "A unidade pertence a outro condominio."})
+
+    unit.soft_delete(user=actor)
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="core.unit.deactivated",
         target=unit,
     )
     return unit
@@ -217,6 +335,37 @@ def create_user_membership(
 
 
 @transaction.atomic
+def deactivate_membership(
+    *,
+    condominium: Condominium,
+    actor,
+    membership: CondominiumMembership,
+) -> CondominiumMembership:
+    require_condominium_manager(actor, condominium)
+    if membership.condominium_id != condominium.id:
+        raise ValidationError({"membership": "O membro pertence a outro condominio."})
+    if membership.role in MANAGER_MEMBERSHIP_ROLES:
+        active_manager_count = CondominiumMembership.active_objects.filter(
+            condominium=condominium,
+            role__in=MANAGER_MEMBERSHIP_ROLES,
+        ).count()
+        if active_manager_count <= 1:
+            raise ValidationError(
+                {"membership": "Nao e possivel desativar o ultimo gestor ativo."},
+            )
+
+    membership.soft_delete(user=actor)
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="core.membership.deactivated",
+        target=membership,
+        metadata={"member_user_id": str(membership.user_id), "role": membership.role},
+    )
+    return membership
+
+
+@transaction.atomic
 def create_unit_occupancy(
     *,
     condominium: Condominium,
@@ -258,6 +407,28 @@ def create_unit_occupancy(
         action="core.unit_occupancy.created",
         target=occupancy,
         metadata={"occupant_user_id": str(user.id), "unit_id": str(unit.id)},
+    )
+    return occupancy
+
+
+@transaction.atomic
+def deactivate_unit_occupancy(
+    *,
+    condominium: Condominium,
+    actor,
+    occupancy: UnitOccupancy,
+) -> UnitOccupancy:
+    require_condominium_manager(actor, condominium)
+    if occupancy.condominium_id != condominium.id:
+        raise ValidationError({"occupancy": "O morador por unidade pertence a outro condominio."})
+
+    occupancy.soft_delete(user=actor)
+    create_audit_log(
+        condominium=condominium,
+        actor=actor,
+        action="core.unit_occupancy.deactivated",
+        target=occupancy,
+        metadata={"occupant_user_id": str(occupancy.user_id), "unit_id": str(occupancy.unit_id)},
     )
     return occupancy
 

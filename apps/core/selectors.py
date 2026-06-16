@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
 
 from .models import Block, Condominium, CondominiumMembership, Unit, UnitOccupancy
 from .permissions import user_has_condominium_access
@@ -61,7 +62,10 @@ def list_blocks_for_condominium(*, condominium):
 
 
 def get_block_for_condominium(*, condominium, block_id):
-    return Block.active_objects.get(id=block_id, condominium=condominium)
+    block = Block.active_objects.filter(id=block_id, condominium=condominium).first()
+    if block is None:
+        raise Http404("Bloco nao encontrado.")
+    return block
 
 
 def list_units_for_condominium(*, condominium):
@@ -73,7 +77,14 @@ def list_units_for_condominium(*, condominium):
 
 
 def get_unit_for_condominium(*, condominium, unit_id):
-    return Unit.active_objects.select_related("block").get(id=unit_id, condominium=condominium)
+    unit = (
+        Unit.active_objects.select_related("block")
+        .filter(id=unit_id, condominium=condominium)
+        .first()
+    )
+    if unit is None:
+        raise Http404("Unidade nao encontrada.")
+    return unit
 
 
 def list_occupancies_for_condominium(*, condominium):
@@ -82,3 +93,25 @@ def list_occupancies_for_condominium(*, condominium):
         .select_related("unit", "user")
         .order_by("unit__number", "user__username")
     )
+
+
+def get_membership_by_id_for_condominium(*, condominium, membership_id):
+    membership = (
+        CondominiumMembership.active_objects.select_related("user", "condominium")
+        .filter(id=membership_id, condominium=condominium)
+        .first()
+    )
+    if membership is None:
+        raise Http404("Membro nao encontrado.")
+    return membership
+
+
+def get_occupancy_for_condominium(*, condominium, occupancy_id):
+    occupancy = (
+        UnitOccupancy.active_objects.select_related("unit", "user")
+        .filter(id=occupancy_id, condominium=condominium)
+        .first()
+    )
+    if occupancy is None:
+        raise Http404("Morador por unidade nao encontrado.")
+    return occupancy

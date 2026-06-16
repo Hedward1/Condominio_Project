@@ -1,10 +1,10 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Novo bloco{% endblock %}
+{% block title %}{% if is_update %}Editar bloco{% else %}Novo bloco{% endif %}{% endblock %}
 
 {% block content %}
   <div class="page-header">
-    <h1>Novo bloco</h1>
+    <h1>{% if is_update %}Editar bloco{% else %}Novo bloco{% endif %}</h1>
     <a class="button secondary" href="{% url 'core:block_list' %}">Voltar</a>
   </div>
   <section class="panel">

@@ -1,10 +1,10 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Nova unidade{% endblock %}
+{% block title %}{% if is_update %}Editar unidade{% else %}Nova unidade{% endif %}{% endblock %}
 
 {% block content %}
   <div class="page-header">
-    <h1>Nova unidade</h1>
+    <h1>{% if is_update %}Editar unidade{% else %}Nova unidade{% endif %}</h1>
     <a class="button secondary" href="{% url 'core:unit_list' %}">Voltar</a>
   </div>
   <section class="panel">

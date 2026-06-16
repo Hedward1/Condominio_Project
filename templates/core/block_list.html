@@ -14,6 +14,7 @@
           <tr>
             <th>Nome</th>
             <th>Descricao</th>
+            <th>Acoes</th>
           </tr>
         </thead>
         <tbody>
@@ -21,6 +22,12 @@
             <tr>
               <td>{{ block.name }}</td>
               <td class="muted">{{ block.description|default:"-" }}</td>
+              <td>
+                <div class="actions">
+                  <a class="button secondary" href="{% url 'core:block_update' block.id %}">Editar</a>
+                  <a class="button danger" href="{% url 'core:block_deactivate' block.id %}">Desativar</a>
+                </div>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
