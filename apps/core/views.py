@@ -3,17 +3,19 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect, render
 
-from .forms import BlockForm, MembershipCreateForm, UnitForm
+from .forms import BlockForm, MembershipCreateForm, UnitForm, UnitOccupancyForm
 from .permissions import require_condominium_manager
 from .selectors import (
     list_blocks_for_condominium,
     list_condominiums_for_user,
     list_memberships_for_condominium,
+    list_occupancies_for_condominium,
     list_units_for_condominium,
 )
 from .services import (
     create_block,
     create_unit,
+    create_unit_occupancy,
     create_user_membership,
     set_active_condominium_for_request,
 )
@@ -179,3 +181,46 @@ def membership_create(request):
             return redirect("core:membership_list")
 
     return render(request, "core/membership_form.html", {"form": form})
+
+
+@login_required
+def unit_occupancy_list(request):
+    condominium, response = _active_condominium_or_redirect(request)
+    if response is not None:
+        return response
+    require_condominium_manager(request.user, condominium)
+
+    return render(
+        request,
+        "core/unit_occupancy_list.html",
+        {"occupancies": list_occupancies_for_condominium(condominium=condominium)},
+    )
+
+
+@login_required
+def unit_occupancy_create(request):
+    condominium, response = _active_condominium_or_redirect(request)
+    if response is not None:
+        return response
+    require_condominium_manager(request.user, condominium)
+
+    form = UnitOccupancyForm(request.POST or None, condominium=condominium)
+    if request.method == "POST" and form.is_valid():
+        try:
+            create_unit_occupancy(
+                condominium=condominium,
+                actor=request.user,
+                unit=form.cleaned_data["unit"],
+                user=form.cleaned_data["user"],
+                occupancy_type=form.cleaned_data["occupancy_type"],
+                is_primary=form.cleaned_data["is_primary"],
+                starts_at=form.cleaned_data["starts_at"],
+                ends_at=form.cleaned_data["ends_at"],
+            )
+        except ValidationError as error:
+            _add_validation_error(form, error)
+        else:
+            messages.success(request, "Vinculo cadastrado.")
+            return redirect("core:unit_occupancy_list")
+
+    return render(request, "core/unit_occupancy_form.html", {"form": form})

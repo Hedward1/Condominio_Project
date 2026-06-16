@@ -1,8 +1,12 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import CondominiumMembership, CondominiumRole
-from .selectors import list_blocks_for_condominium
+from .models import CondominiumMembership, CondominiumRole, OccupancyType
+from .selectors import (
+    list_blocks_for_condominium,
+    list_membership_users_for_condominium,
+    list_units_for_condominium,
+)
 
 
 class BlockForm(forms.Form):
@@ -19,6 +23,30 @@ class UnitForm(forms.Form):
     def __init__(self, *args, condominium, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["block"].queryset = list_blocks_for_condominium(condominium=condominium)
+
+
+class UnitOccupancyForm(forms.Form):
+    unit = forms.ModelChoiceField(label="Unidade", queryset=None)
+    user = forms.ModelChoiceField(label="Membro", queryset=None)
+    occupancy_type = forms.ChoiceField(label="Tipo de vinculo", choices=OccupancyType.choices)
+    is_primary = forms.BooleanField(label="Responsavel principal", required=False)
+    starts_at = forms.DateField(
+        label="Inicio",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    ends_at = forms.DateField(
+        label="Fim",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+
+    def __init__(self, *args, condominium, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["unit"].queryset = list_units_for_condominium(condominium=condominium)
+        self.fields["user"].queryset = list_membership_users_for_condominium(
+            condominium=condominium,
+        )
 
 
 class MembershipCreateForm(forms.Form):

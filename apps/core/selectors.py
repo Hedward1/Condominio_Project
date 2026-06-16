@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 
 from .models import Block, Condominium, CondominiumMembership, Unit, UnitOccupancy
@@ -39,6 +40,19 @@ def list_memberships_for_condominium(*, condominium):
         CondominiumMembership.active_objects.filter(condominium=condominium)
         .select_related("user")
         .order_by("user__username")
+    )
+
+
+def list_membership_users_for_condominium(*, condominium):
+    User = get_user_model()
+    return (
+        User.objects.filter(
+            condominium_memberships__condominium=condominium,
+            condominium_memberships__is_active=True,
+            is_active=True,
+        )
+        .distinct()
+        .order_by("first_name", "last_name", "username")
     )
 
 

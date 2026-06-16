@@ -1,0 +1,40 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Vinculos{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Vinculos</h1>
+    <a class="button" href="{% url 'core:unit_occupancy_create' %}">Novo vinculo</a>
+  </div>
+  <section class="panel">
+    {% if occupancies %}
+      <table>
+        <thead>
+          <tr>
+            <th>Unidade</th>
+            <th>Membro</th>
+            <th>Tipo</th>
+            <th>Principal</th>
+            <th>Periodo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for occupancy in occupancies %}
+            <tr>
+              <td>{{ occupancy.unit }}</td>
+              <td>{{ occupancy.user.get_full_name|default:occupancy.user.username }}</td>
+              <td>{{ occupancy.get_occupancy_type_display }}</td>
+              <td>{% if occupancy.is_primary %}Sim{% else %}Nao{% endif %}</td>
+              <td class="muted">
+                {{ occupancy.starts_at|default:"-" }}{% if occupancy.ends_at %} ate {{ occupancy.ends_at }}{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum vinculo cadastrado.</p>
+    {% endif %}
+  </section>
+{% endblock %}
