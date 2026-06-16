@@ -154,6 +154,25 @@ def test_syndic_deactivates_block_with_audit_log(client, core_context):
 
 
 @pytest.mark.django_db
+def test_block_deactivate_rejects_active_units(client, core_context):
+    block = Block.objects.create(condominium=core_context["condo_a"], name="Torre A")
+    Unit.objects.create(condominium=core_context["condo_a"], block=block, number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(reverse("core:block_deactivate", args=[block.id]))
+
+    assert response.status_code == 200
+    block.refresh_from_db()
+    assert block.is_active is True
+    assert not AuditLog.objects.filter(
+        condominium=core_context["condo_a"],
+        action="core.block.deactivated",
+        object_id=str(block.id),
+    ).exists()
+
+
+@pytest.mark.django_db
 def test_block_deactivate_blocks_cross_tenant_access(client, core_context):
     other_block = Block.objects.create(condominium=core_context["condo_b"], name="Torre B")
     client.login(username="syndic", password="testpass123")
@@ -264,6 +283,30 @@ def test_syndic_deactivates_unit_with_audit_log(client, core_context):
 
 
 @pytest.mark.django_db
+def test_unit_deactivate_rejects_active_occupancy(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.RESIDENT,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(reverse("core:unit_deactivate", args=[unit.id]))
+
+    assert response.status_code == 200
+    unit.refresh_from_db()
+    assert unit.is_active is True
+    assert not AuditLog.objects.filter(
+        condominium=core_context["condo_a"],
+        action="core.unit.deactivated",
+        object_id=str(unit.id),
+    ).exists()
+
+
+@pytest.mark.django_db
 def test_unit_deactivate_blocks_cross_tenant_access(client, core_context):
     other_unit = Unit.objects.create(condominium=core_context["condo_b"], number="202")
     client.login(username="syndic", password="testpass123")
@@ -353,6 +396,34 @@ def test_syndic_deactivates_membership_with_audit_log(client, core_context):
     assert AuditLog.objects.filter(
         condominium=core_context["condo_a"],
         actor=core_context["syndic"],
+        action="core.membership.deactivated",
+        object_id=str(membership.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_membership_deactivate_rejects_active_occupancy(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.RESIDENT,
+    )
+    membership = CondominiumMembership.objects.get(
+        condominium=core_context["condo_a"],
+        user=core_context["resident"],
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(reverse("core:membership_deactivate", args=[membership.id]))
+
+    assert response.status_code == 200
+    membership.refresh_from_db()
+    assert membership.is_active is True
+    assert not AuditLog.objects.filter(
+        condominium=core_context["condo_a"],
         action="core.membership.deactivated",
         object_id=str(membership.id),
     ).exists()

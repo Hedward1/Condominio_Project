@@ -142,6 +142,10 @@ def deactivate_block(*, condominium: Condominium, actor, block: Block) -> Block:
     require_condominium_manager(actor, condominium)
     if block.condominium_id != condominium.id:
         raise ValidationError({"block": "O bloco pertence a outro condominio."})
+    if Unit.active_objects.filter(condominium=condominium, block=block).exists():
+        raise ValidationError(
+            {"block": "Este bloco possui unidades ativas. Desative as unidades primeiro."},
+        )
 
     block.soft_delete(user=actor)
     create_audit_log(
@@ -241,6 +245,15 @@ def deactivate_unit(*, condominium: Condominium, actor, unit: Unit) -> Unit:
     require_condominium_manager(actor, condominium)
     if unit.condominium_id != condominium.id:
         raise ValidationError({"unit": "A unidade pertence a outro condominio."})
+    if UnitOccupancy.active_objects.filter(condominium=condominium, unit=unit).exists():
+        raise ValidationError(
+            {
+                "unit": (
+                    "Esta unidade possui moradores por unidade ativos. "
+                    "Desative esses vinculos primeiro."
+                ),
+            },
+        )
 
     unit.soft_delete(user=actor)
     create_audit_log(
@@ -344,6 +357,18 @@ def deactivate_membership(
     require_condominium_manager(actor, condominium)
     if membership.condominium_id != condominium.id:
         raise ValidationError({"membership": "O membro pertence a outro condominio."})
+    if UnitOccupancy.active_objects.filter(
+        condominium=condominium,
+        user=membership.user,
+    ).exists():
+        raise ValidationError(
+            {
+                "membership": (
+                    "Este membro possui moradores por unidade ativos. "
+                    "Desative esses vinculos primeiro."
+                ),
+            },
+        )
     if membership.role in MANAGER_MEMBERSHIP_ROLES:
         active_manager_count = CondominiumMembership.active_objects.filter(
             condominium=condominium,
