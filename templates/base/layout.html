@@ -204,6 +204,7 @@
             <a href="{% url 'communication:mural' %}">Comunicados</a>
             <a href="{% url 'tickets:ticket_list' %}">Meus Chamados</a>
             <a href="{% url 'documents:document_list' %}">Documentos</a>
+            <a href="{% url 'reservations:reservation_list' %}">Reservas</a>
           {% endif %}
           {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
             <a href="{% url 'core:block_list' %}">Blocos</a>
@@ -214,6 +215,7 @@
             <a href="{% url 'communication:category_list' %}">Categorias</a>
             <a href="{% url 'tickets:admin_ticket_list' %}">Gerenciar Chamados</a>
             <a href="{% url 'documents:admin_document_list' %}">Gerenciar Documentos</a>
+            <a href="{% url 'reservations:admin_reservation_list' %}">Gerenciar Reservas</a>
           {% endif %}
           <a href="{% url 'core:condominium_select' %}">Trocar condominio</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline">

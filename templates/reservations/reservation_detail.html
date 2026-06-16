@@ -1,0 +1,22 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Reserva{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Reserva</h1>
+    <a class="button secondary" href="{% url 'reservations:reservation_list' %}">Voltar</a>
+  </div>
+  <section class="panel">
+    <p><strong>Area comum:</strong> {{ reservation.amenity.name }}</p>
+    <p><strong>Inicio:</strong> {{ reservation.start_at }}</p>
+    <p><strong>Fim:</strong> {{ reservation.end_at }}</p>
+    <p><strong>Status:</strong> {{ reservation.get_status_display }}</p>
+    {% if reservation.notes %}
+      <p><strong>Observacoes:</strong> {{ reservation.notes }}</p>
+    {% endif %}
+    {% if reservation.manager_notes %}
+      <p><strong>Resposta da administracao:</strong> {{ reservation.manager_notes }}</p>
+    {% endif %}
+  </section>
+{% endblock %}

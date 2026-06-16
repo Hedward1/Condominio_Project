@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.communication",
     "apps.tickets",
     "apps.documents",
+    "apps.reservations",
     "apps.dashboard",
 ]
 

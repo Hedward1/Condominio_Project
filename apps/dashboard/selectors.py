@@ -4,6 +4,7 @@ from django.utils import timezone
 from apps.communication.models import Announcement, AnnouncementReadReceipt, AnnouncementStatus
 from apps.core.models import CondominiumMembership, CondominiumRole, Unit
 from apps.documents.models import Document
+from apps.reservations.models import Reservation, ReservationStatus
 from apps.tickets.models import Ticket, TicketStatus
 
 RESIDENT_SUMMARY_ROLES = [
@@ -37,6 +38,7 @@ def get_syndic_dashboard_summary(*, condominium) -> dict:
         or 0
     )
     tickets = Ticket.active_objects.filter(condominium=condominium)
+    reservations = Reservation.active_objects.filter(condominium=condominium)
 
     return {
         "total_units": Unit.active_objects.filter(condominium=condominium).count(),
@@ -53,4 +55,9 @@ def get_syndic_dashboard_summary(*, condominium) -> dict:
             resolved_at__gte=start_of_month,
         ).count(),
         "active_documents": Document.active_objects.filter(condominium=condominium).count(),
+        "pending_reservations": reservations.filter(status=ReservationStatus.PENDING).count(),
+        "approved_reservations_this_month": reservations.filter(
+            status=ReservationStatus.APPROVED,
+            start_at__gte=start_of_month,
+        ).count(),
     }

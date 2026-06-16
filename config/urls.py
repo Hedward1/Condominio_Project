@@ -10,5 +10,6 @@ urlpatterns = [
     path("communication/", include("apps.communication.urls")),
     path("tickets/", include("apps.tickets.urls")),
     path("documents/", include("apps.documents.urls")),
+    path("reservations/", include("apps.reservations.urls")),
     path("", include("apps.dashboard.urls")),
 ]

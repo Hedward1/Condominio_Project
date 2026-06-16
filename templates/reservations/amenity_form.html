@@ -1,0 +1,17 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{% if is_update %}Editar area comum{% else %}Nova area comum{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>{% if is_update %}Editar area comum{% else %}Nova area comum{% endif %}</h1>
+    <a class="button secondary" href="{% url 'reservations:amenity_list' %}">Voltar</a>
+  </div>
+  <section class="panel">
+    <form method="post">
+      {% csrf_token %}
+      {% include "core/_form_fields.html" %}
+      <button class="button" type="submit">Salvar</button>
+    </form>
+  </section>
+{% endblock %}

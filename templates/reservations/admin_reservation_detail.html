@@ -1,0 +1,53 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Gerenciar Reserva{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Gerenciar Reserva</h1>
+    <a class="button secondary" href="{% url 'reservations:admin_reservation_list' %}">Voltar</a>
+  </div>
+  <section class="panel" style="margin-bottom:16px">
+    <p><strong>Area comum:</strong> {{ reservation.amenity.name }}</p>
+    <p><strong>Solicitante:</strong> {{ reservation.requested_by.get_full_name|default:reservation.requested_by.username }}</p>
+    <p><strong>Inicio:</strong> {{ reservation.start_at }}</p>
+    <p><strong>Fim:</strong> {{ reservation.end_at }}</p>
+    <p><strong>Status:</strong> {{ reservation.get_status_display }}</p>
+    {% if reservation.notes %}
+      <p><strong>Observacoes:</strong> {{ reservation.notes }}</p>
+    {% endif %}
+    {% if reservation.manager_notes %}
+      <p><strong>Observacoes do gestor:</strong> {{ reservation.manager_notes }}</p>
+    {% endif %}
+  </section>
+  {% if reservation.status == "PENDING" or reservation.status == "APPROVED" %}
+    <section class="panel">
+      <form method="post">
+        {% csrf_token %}
+        {% include "core/_form_fields.html" with form=decision_form %}
+        <div class="actions">
+          {% if reservation.status == "PENDING" %}
+            <button
+              class="button"
+              type="submit"
+              formaction="{% url 'reservations:reservation_approve' reservation.id %}"
+              onclick="return confirm('Aprovar esta reserva?')"
+            >Aprovar</button>
+            <button
+              class="button secondary"
+              type="submit"
+              formaction="{% url 'reservations:reservation_reject' reservation.id %}"
+              onclick="return confirm('Rejeitar esta reserva?')"
+            >Rejeitar</button>
+          {% endif %}
+          <button
+            class="button danger"
+            type="submit"
+            formaction="{% url 'reservations:reservation_cancel' reservation.id %}"
+            onclick="return confirm('Cancelar esta reserva?')"
+          >Cancelar</button>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

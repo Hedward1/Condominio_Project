@@ -1,0 +1,17 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Solicitar reserva{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Solicitar reserva</h1>
+    <a class="button secondary" href="{% url 'reservations:reservation_list' %}">Voltar</a>
+  </div>
+  <section class="panel">
+    <form method="post">
+      {% csrf_token %}
+      {% include "core/_form_fields.html" %}
+      <button class="button" type="submit">Solicitar</button>
+    </form>
+  </section>
+{% endblock %}

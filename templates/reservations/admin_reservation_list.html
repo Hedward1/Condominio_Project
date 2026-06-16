@@ -1,0 +1,40 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Gerenciar Reservas{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Gerenciar Reservas</h1>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'reservations:amenity_list' %}">Areas comuns</a>
+    </div>
+  </div>
+  <section class="panel">
+    {% if reservations %}
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Solicitante</th>
+            <th>Inicio</th>
+            <th>Fim</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for reservation in reservations %}
+            <tr>
+              <td><a href="{% url 'reservations:admin_reservation_detail' reservation.id %}">{{ reservation.amenity.name }}</a></td>
+              <td>{{ reservation.requested_by.get_full_name|default:reservation.requested_by.username }}</td>
+              <td>{{ reservation.start_at }}</td>
+              <td>{{ reservation.end_at }}</td>
+              <td>{{ reservation.get_status_display }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhuma reserva cadastrada.</p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Reservas{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Reservas</h1>
+    <a class="button" href="{% url 'reservations:reservation_create' %}">Solicitar reserva</a>
+  </div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>Areas comuns</h2>
+    {% if amenities %}
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Descricao</th>
+            <th>Regras</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for amenity in amenities %}
+            <tr>
+              <td>{{ amenity.name }}</td>
+              <td class="muted">{{ amenity.description|default:"-" }}</td>
+              <td class="muted">{{ amenity.rules|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhuma area comum disponivel.</p>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <h2>Minhas reservas</h2>
+    {% if reservations %}
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Inicio</th>
+            <th>Fim</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for reservation in reservations %}
+            <tr>
+              <td><a href="{% url 'reservations:reservation_detail' reservation.id %}">{{ reservation.amenity.name }}</a></td>
+              <td>{{ reservation.start_at }}</td>
+              <td>{{ reservation.end_at }}</td>
+              <td>{{ reservation.get_status_display }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhuma reserva solicitada.</p>
+    {% endif %}
+  </section>
+{% endblock %}

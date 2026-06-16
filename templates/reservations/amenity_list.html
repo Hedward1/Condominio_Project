@@ -1,0 +1,44 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Areas Comuns{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Areas Comuns</h1>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'reservations:admin_reservation_list' %}">Reservas</a>
+      <a class="button" href="{% url 'reservations:amenity_create' %}">Nova area comum</a>
+    </div>
+  </div>
+  <section class="panel">
+    {% if amenities %}
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Descricao</th>
+            <th>Regras</th>
+            <th>Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for amenity in amenities %}
+            <tr>
+              <td>{{ amenity.name }}</td>
+              <td class="muted">{{ amenity.description|default:"-" }}</td>
+              <td class="muted">{{ amenity.rules|default:"-" }}</td>
+              <td>
+                <div class="actions">
+                  <a class="button secondary" href="{% url 'reservations:amenity_update' amenity.id %}">Editar</a>
+                  <a class="button danger" href="{% url 'reservations:amenity_deactivate' amenity.id %}">Desativar</a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhuma area comum cadastrada.</p>
+    {% endif %}
+  </section>
+{% endblock %}
