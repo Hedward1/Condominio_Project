@@ -10,7 +10,12 @@ from apps.core.permissions import (
     user_can_manage_condominium,
 )
 
-from .forms import DocumentCategoryForm, DocumentCreateForm, DocumentMetadataForm
+from .forms import (
+    DocumentAdminFilterForm,
+    DocumentCategoryForm,
+    DocumentCreateForm,
+    DocumentMetadataForm,
+)
 from .selectors import (
     get_document_category_for_condominium,
     get_document_for_manager,
@@ -114,11 +119,19 @@ def admin_document_list(request):
     if response is not None:
         return response
     require_condominium_manager(request.user, condominium)
+    filter_form = DocumentAdminFilterForm(request.GET or None, condominium=condominium)
+    filters = filter_form.cleaned_data if filter_form.is_valid() else {}
 
     return render(
         request,
         "documents/admin_document_list.html",
-        {"documents": list_documents_for_manager(condominium=condominium)},
+        {
+            "documents": list_documents_for_manager(
+                condominium=condominium,
+                filters=filters,
+            ),
+            "filter_form": filter_form,
+        },
     )
 
 

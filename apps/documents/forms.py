@@ -35,3 +35,18 @@ class DocumentMetadataForm(forms.Form):
         self.fields["category"].queryset = list_document_categories_for_condominium(
             condominium=condominium,
         )
+
+
+class DocumentAdminFilterForm(forms.Form):
+    visibility = forms.ChoiceField(
+        label="Visibilidade",
+        choices=[("", "Todas")] + list(DocumentVisibility.choices),
+        required=False,
+    )
+    category = forms.ModelChoiceField(label="Categoria", queryset=None, required=False)
+
+    def __init__(self, *args, condominium, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].queryset = list_document_categories_for_condominium(
+            condominium=condominium,
+        )

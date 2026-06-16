@@ -22,10 +22,15 @@ def list_reservations_for_user(*, condominium, user):
     )
 
 
-def list_reservations_for_manager(*, condominium):
+def list_reservations_for_manager(*, condominium, filters=None):
+    filters = filters or {}
+    reservations = Reservation.active_objects.filter(condominium=condominium)
+    if filters.get("status"):
+        reservations = reservations.filter(status=filters["status"])
+    if filters.get("amenity"):
+        reservations = reservations.filter(amenity=filters["amenity"])
     return (
-        Reservation.active_objects.filter(condominium=condominium)
-        .select_related("amenity", "requested_by", "decided_by", "cancelled_by")
+        reservations.select_related("amenity", "requested_by", "decided_by", "cancelled_by")
         .order_by("-start_at")
     )
 

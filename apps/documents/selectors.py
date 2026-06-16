@@ -17,12 +17,14 @@ def get_document_category_for_condominium(*, condominium, category_id):
     return category
 
 
-def list_documents_for_manager(*, condominium):
-    return (
-        Document.active_objects.filter(condominium=condominium)
-        .select_related("category", "created_by")
-        .order_by("-created_at")
-    )
+def list_documents_for_manager(*, condominium, filters=None):
+    filters = filters or {}
+    documents = Document.active_objects.filter(condominium=condominium)
+    if filters.get("visibility"):
+        documents = documents.filter(visibility=filters["visibility"])
+    if filters.get("category"):
+        documents = documents.filter(category=filters["category"])
+    return documents.select_related("category", "created_by").order_by("-created_at")
 
 
 def list_documents_for_resident(*, condominium):

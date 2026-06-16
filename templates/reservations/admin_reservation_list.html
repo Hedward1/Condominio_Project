@@ -9,6 +9,15 @@
       <a class="button secondary" href="{% url 'reservations:amenity_list' %}">Areas comuns</a>
     </div>
   </div>
+  <section class="panel" style="margin-bottom:16px">
+    <form method="get">
+      {% include "core/_form_fields.html" with form=filter_form %}
+      <div class="actions">
+        <button class="button" type="submit">Filtrar</button>
+        <a class="button secondary" href="{% url 'reservations:admin_reservation_list' %}">Limpar filtros</a>
+      </div>
+    </form>
+  </section>
   <section class="panel">
     {% if reservations %}
       <table>

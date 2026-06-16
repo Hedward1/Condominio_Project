@@ -493,6 +493,134 @@ def test_manager_sees_reservations_from_active_condominium(client, reservations_
 
 
 @pytest.mark.django_db
+def test_admin_reservation_list_filters_by_status(client, reservations_context):
+    pending_reservation = make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["resident"],
+        status=ReservationStatus.PENDING,
+    )
+    approved_reservation = make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["second_resident"],
+        status=ReservationStatus.APPROVED,
+        days=2,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.get(
+        reverse("reservations:admin_reservation_list"),
+        {"status": ReservationStatus.PENDING},
+    )
+
+    assert response.status_code == 200
+    assert list(response.context["reservations"]) == [pending_reservation]
+    assert approved_reservation not in response.context["reservations"]
+
+
+@pytest.mark.django_db
+def test_admin_reservation_list_filters_by_amenity(client, reservations_context):
+    second_amenity = Amenity.objects.create(
+        condominium=reservations_context["condo_a"],
+        name="Piscina",
+    )
+    target_reservation = make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["resident"],
+    )
+    other_reservation = make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=second_amenity,
+        requested_by=reservations_context["second_resident"],
+        days=2,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.get(
+        reverse("reservations:admin_reservation_list"),
+        {"amenity": str(reservations_context["amenity_a"].id)},
+    )
+
+    assert response.status_code == 200
+    assert list(response.context["reservations"]) == [target_reservation]
+    assert other_reservation not in response.context["reservations"]
+
+
+@pytest.mark.django_db
+def test_admin_reservation_list_combines_filters(client, reservations_context):
+    second_amenity = Amenity.objects.create(
+        condominium=reservations_context["condo_a"],
+        name="Piscina",
+    )
+    target_reservation = make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["resident"],
+        status=ReservationStatus.APPROVED,
+    )
+    make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["second_resident"],
+        status=ReservationStatus.PENDING,
+        days=2,
+    )
+    make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=second_amenity,
+        requested_by=reservations_context["second_resident"],
+        status=ReservationStatus.APPROVED,
+        days=3,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.get(
+        reverse("reservations:admin_reservation_list"),
+        {
+            "amenity": str(reservations_context["amenity_a"].id),
+            "status": ReservationStatus.APPROVED,
+        },
+    )
+
+    assert response.status_code == 200
+    assert list(response.context["reservations"]) == [target_reservation]
+
+
+@pytest.mark.django_db
+def test_admin_reservation_filter_rejects_other_condominium_amenity_safely(
+    client,
+    reservations_context,
+):
+    reservation_a = make_reservation(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["resident"],
+    )
+    reservation_b = make_reservation(
+        condominium=reservations_context["condo_b"],
+        amenity=reservations_context["amenity_b"],
+        requested_by=reservations_context["other_resident"],
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.get(
+        reverse("reservations:admin_reservation_list"),
+        {"amenity": str(reservations_context["amenity_b"].id)},
+    )
+
+    assert response.status_code == 200
+    assert reservation_a in response.context["reservations"]
+    assert reservation_b not in response.context["reservations"]
+    assert b"Churrasqueira" not in response.content
+
+
+@pytest.mark.django_db
 def test_manager_approves_reservation_with_audit_log(client, reservations_context):
     reservation = make_reservation(
         condominium=reservations_context["condo_a"],

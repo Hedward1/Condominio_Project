@@ -502,6 +502,134 @@ def test_manager_sees_active_documents_from_active_condominium(client, documents
 
 
 @pytest.mark.django_db
+def test_admin_document_list_filters_by_visibility(client, documents_context):
+    public_document = make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Documento publico",
+    )
+    restricted_document = make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Documento restrito",
+        visibility=DocumentVisibility.MANAGERS_ONLY,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, documents_context["condo_a"])
+
+    response = client.get(
+        reverse("documents:admin_document_list"),
+        {"visibility": DocumentVisibility.PUBLIC_TO_RESIDENTS},
+    )
+
+    assert response.status_code == 200
+    assert list(response.context["documents"]) == [public_document]
+    assert restricted_document not in response.context["documents"]
+
+
+@pytest.mark.django_db
+def test_admin_document_list_filters_by_category(client, documents_context):
+    second_category = DocumentCategory.objects.create(
+        condominium=documents_context["condo_a"],
+        name="Contratos",
+    )
+    target_document = make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Ata",
+        category=documents_context["category_a"],
+    )
+    other_document = make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Contrato",
+        category=second_category,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, documents_context["condo_a"])
+
+    response = client.get(
+        reverse("documents:admin_document_list"),
+        {"category": str(documents_context["category_a"].id)},
+    )
+
+    assert response.status_code == 200
+    assert list(response.context["documents"]) == [target_document]
+    assert other_document not in response.context["documents"]
+
+
+@pytest.mark.django_db
+def test_admin_document_list_combines_filters(client, documents_context):
+    second_category = DocumentCategory.objects.create(
+        condominium=documents_context["condo_a"],
+        name="Contratos",
+    )
+    target_document = make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Alvo",
+        category=documents_context["category_a"],
+        visibility=DocumentVisibility.MANAGERS_ONLY,
+    )
+    make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Visibilidade diferente",
+        category=documents_context["category_a"],
+    )
+    make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Categoria diferente",
+        category=second_category,
+        visibility=DocumentVisibility.MANAGERS_ONLY,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, documents_context["condo_a"])
+
+    response = client.get(
+        reverse("documents:admin_document_list"),
+        {
+            "category": str(documents_context["category_a"].id),
+            "visibility": DocumentVisibility.MANAGERS_ONLY,
+        },
+    )
+
+    assert response.status_code == 200
+    assert list(response.context["documents"]) == [target_document]
+
+
+@pytest.mark.django_db
+def test_admin_document_filter_rejects_other_condominium_category_safely(
+    client,
+    documents_context,
+):
+    document_a = make_document(
+        condominium=documents_context["condo_a"],
+        created_by=documents_context["syndic"],
+        title="Documento A",
+    )
+    document_b = make_document(
+        condominium=documents_context["condo_b"],
+        created_by=documents_context["other_resident"],
+        title="Documento B",
+        category=documents_context["category_b"],
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, documents_context["condo_a"])
+
+    response = client.get(
+        reverse("documents:admin_document_list"),
+        {"category": str(documents_context["category_b"].id)},
+    )
+
+    assert response.status_code == 200
+    assert document_a in response.context["documents"]
+    assert document_b not in response.context["documents"]
+    assert b"Documento B" not in response.content
+
+
+@pytest.mark.django_db
 def test_resident_downloads_public_document_through_protected_view(client, documents_context):
     document = make_document(
         condominium=documents_context["condo_a"],

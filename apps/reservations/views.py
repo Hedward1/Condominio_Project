@@ -6,7 +6,12 @@ from django.shortcuts import redirect, render
 
 from apps.core.permissions import require_active_membership, require_condominium_manager
 
-from .forms import AmenityForm, ReservationDecisionForm, ReservationRequestForm
+from .forms import (
+    AmenityForm,
+    ReservationAdminFilterForm,
+    ReservationDecisionForm,
+    ReservationRequestForm,
+)
 from .selectors import (
     get_amenity_for_condominium,
     get_reservation_for_manager,
@@ -122,11 +127,19 @@ def admin_reservation_list(request):
     if response is not None:
         return response
     require_condominium_manager(request.user, condominium)
+    filter_form = ReservationAdminFilterForm(request.GET or None, condominium=condominium)
+    filters = filter_form.cleaned_data if filter_form.is_valid() else {}
 
     return render(
         request,
         "reservations/admin_reservation_list.html",
-        {"reservations": list_reservations_for_manager(condominium=condominium)},
+        {
+            "filter_form": filter_form,
+            "reservations": list_reservations_for_manager(
+                condominium=condominium,
+                filters=filters,
+            ),
+        },
     )
 
 

@@ -4,63 +4,74 @@
 
 {% block content %}
   <h1>Dashboard</h1>
-  <div class="grid">
-    <div class="metric">
-      <span class="muted">Unidades</span>
-      <strong>{{ summary.total_units }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Moradores ativos</span>
-      <strong>{{ summary.active_residents }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Comunicados no mes</span>
-      <strong>{{ summary.published_announcements_this_month }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Leitura dos comunicados</span>
-      <strong>{{ summary.announcement_read_rate }}%</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Chamados abertos</span>
-      <strong>{{ summary.open_tickets }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Chamados em andamento</span>
-      <strong>{{ summary.tickets_in_progress }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Resolvidos no mes</span>
-      <strong>{{ summary.tickets_resolved_this_month }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Documentos ativos</span>
-      <strong>{{ summary.active_documents }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Reservas pendentes</span>
-      <strong>{{ summary.pending_reservations }}</strong>
-    </div>
-    <div class="metric">
-      <span class="muted">Reservas aprovadas no mes</span>
-      <strong>{{ summary.approved_reservations_this_month }}</strong>
-    </div>
-  </div>
-  <p>
-    <a class="button secondary" href="{% url 'communication:mural' %}">Comunicados</a>
-    <a class="button secondary" href="{% url 'tickets:ticket_list' %}">Meus Chamados</a>
-    <a class="button secondary" href="{% url 'documents:document_list' %}">Documentos</a>
-    <a class="button secondary" href="{% url 'reservations:reservation_list' %}">Reservas</a>
+  <div class="stack">
+    <section class="panel">
+      <div class="grid">
+        <div class="metric">
+          <span class="muted">Unidades</span>
+          <strong>{{ summary.total_units }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Moradores ativos</span>
+          <strong>{{ summary.active_residents }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Comunicados no mes</span>
+          <strong>{{ summary.published_announcements_this_month }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Leitura dos comunicados</span>
+          <strong>{{ summary.announcement_read_rate }}%</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Chamados abertos</span>
+          <strong>{{ summary.open_tickets }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Chamados em andamento</span>
+          <strong>{{ summary.tickets_in_progress }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Resolvidos no mes</span>
+          <strong>{{ summary.tickets_resolved_this_month }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Documentos ativos</span>
+          <strong>{{ summary.active_documents }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Reservas pendentes</span>
+          <strong>{{ summary.pending_reservations }}</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Reservas aprovadas no mes</span>
+          <strong>{{ summary.approved_reservations_this_month }}</strong>
+        </div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Acessos</h2>
+      <div class="actions">
+        <a class="button secondary" href="{% url 'communication:mural' %}">Comunicados</a>
+        <a class="button secondary" href="{% url 'tickets:ticket_list' %}">Meus Chamados</a>
+        <a class="button secondary" href="{% url 'documents:document_list' %}">Documentos</a>
+        <a class="button secondary" href="{% url 'reservations:reservation_list' %}">Reservas</a>
+      </div>
+    </section>
     {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
-      <a class="button secondary" href="{% url 'core:block_list' %}">Blocos</a>
-      <a class="button secondary" href="{% url 'core:unit_list' %}">Unidades</a>
-      <a class="button secondary" href="{% url 'core:membership_list' %}">Membros</a>
-      <a class="button secondary" href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
-      <a class="button secondary" href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
-      <a class="button secondary" href="{% url 'communication:category_list' %}">Categorias</a>
-      <a class="button secondary" href="{% url 'tickets:admin_ticket_list' %}">Gerenciar Chamados</a>
-      <a class="button secondary" href="{% url 'documents:admin_document_list' %}">Gerenciar Documentos</a>
-      <a class="button secondary" href="{% url 'reservations:admin_reservation_list' %}">Gerenciar Reservas</a>
+      <section class="panel">
+        <h2>Gestao</h2>
+        <div class="actions">
+          <a class="button secondary" href="{% url 'core:block_list' %}">Blocos</a>
+          <a class="button secondary" href="{% url 'core:unit_list' %}">Unidades</a>
+          <a class="button secondary" href="{% url 'core:membership_list' %}">Membros</a>
+          <a class="button secondary" href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
+          <a class="button secondary" href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
+          <a class="button secondary" href="{% url 'tickets:admin_ticket_list' %}">Gerenciar Chamados</a>
+          <a class="button secondary" href="{% url 'documents:admin_document_list' %}">Gerenciar Documentos</a>
+          <a class="button secondary" href="{% url 'reservations:admin_reservation_list' %}">Gerenciar Reservas</a>
+        </div>
+      </section>
     {% endif %}
-  </p>
+  </div>
 {% endblock %}
