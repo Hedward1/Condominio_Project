@@ -99,6 +99,7 @@ Consulte [docs/operations/deploy.md](docs/operations/deploy.md) antes de publica
 
 - [CODEX.md](CODEX.md): manual tecnico para desenvolvimento assistido.
 - [docs/mvp/checklist.md](docs/mvp/checklist.md): checklist do MVP funcional base.
+- [docs/demo/mvp-0.1-guided-demo.md](docs/demo/mvp-0.1-guided-demo.md): roteiro de demo guiada do MVP 0.1.
 - [docs/operations/deploy.md](docs/operations/deploy.md): guia de deploy e producao.
 - [docs/technical/architecture.md](docs/technical/architecture.md): arquitetura tecnica.
 - [docs/technical/security.md](docs/technical/security.md): seguranca, permissoes e LGPD.
