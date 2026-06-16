@@ -1,0 +1,39 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Documentos{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Documentos</h1>
+  </div>
+  <section class="panel">
+    {% if documents %}
+      <table>
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Categoria</th>
+            <th>Arquivo</th>
+            <th>Cadastrado em</th>
+            <th>Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for document in documents %}
+            <tr>
+              <td><a href="{% url 'documents:document_detail' document.id %}">{{ document.title }}</a></td>
+              <td class="muted">{{ document.category|default:"-" }}</td>
+              <td class="muted">{{ document.original_filename }}</td>
+              <td class="muted">{{ document.created_at }}</td>
+              <td>
+                <a class="button secondary" href="{% url 'documents:document_download' document.id %}">Baixar</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum documento disponivel.</p>
+    {% endif %}
+  </section>
+{% endblock %}

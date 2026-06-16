@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from apps.communication.models import Announcement, AnnouncementReadReceipt, AnnouncementStatus
 from apps.core.models import CondominiumMembership, CondominiumRole, Unit
+from apps.documents.models import Document
 from apps.tickets.models import Ticket, TicketStatus
 
 RESIDENT_SUMMARY_ROLES = [
@@ -51,4 +52,5 @@ def get_syndic_dashboard_summary(*, condominium) -> dict:
             status=TicketStatus.RESOLVED,
             resolved_at__gte=start_of_month,
         ).count(),
+        "active_documents": Document.active_objects.filter(condominium=condominium).count(),
     }

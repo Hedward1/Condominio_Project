@@ -33,10 +33,15 @@
       <span class="muted">Resolvidos no mes</span>
       <strong>{{ summary.tickets_resolved_this_month }}</strong>
     </div>
+    <div class="metric">
+      <span class="muted">Documentos ativos</span>
+      <strong>{{ summary.active_documents }}</strong>
+    </div>
   </div>
   <p>
     <a class="button secondary" href="{% url 'communication:mural' %}">Comunicados</a>
     <a class="button secondary" href="{% url 'tickets:ticket_list' %}">Meus Chamados</a>
+    <a class="button secondary" href="{% url 'documents:document_list' %}">Documentos</a>
     {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
       <a class="button secondary" href="{% url 'core:block_list' %}">Blocos</a>
       <a class="button secondary" href="{% url 'core:unit_list' %}">Unidades</a>
@@ -45,6 +50,7 @@
       <a class="button secondary" href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
       <a class="button secondary" href="{% url 'communication:category_list' %}">Categorias</a>
       <a class="button secondary" href="{% url 'tickets:admin_ticket_list' %}">Gerenciar Chamados</a>
+      <a class="button secondary" href="{% url 'documents:admin_document_list' %}">Gerenciar Documentos</a>
     {% endif %}
   </p>
 {% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Gerenciar Documentos{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Gerenciar Documentos</h1>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'documents:category_list' %}">Categorias</a>
+      <a class="button" href="{% url 'documents:document_create' %}">Novo documento</a>
+    </div>
+  </div>
+  <section class="panel">
+    {% if documents %}
+      <table>
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Categoria</th>
+            <th>Visibilidade</th>
+            <th>Arquivo</th>
+            <th>Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for document in documents %}
+            <tr>
+              <td>{{ document.title }}</td>
+              <td class="muted">{{ document.category|default:"-" }}</td>
+              <td>{{ document.get_visibility_display }}</td>
+              <td class="muted">{{ document.original_filename }}</td>
+              <td>
+                <div class="actions">
+                  <a class="button secondary" href="{% url 'documents:document_download' document.id %}">Baixar</a>
+                  <a class="button secondary" href="{% url 'documents:document_edit' document.id %}">Editar</a>
+                  <a class="button danger" href="{% url 'documents:document_deactivate' document.id %}">Desativar</a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Nenhum documento cadastrado.</p>
+    {% endif %}
+  </section>
+{% endblock %}
