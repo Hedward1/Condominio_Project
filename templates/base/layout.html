@@ -61,6 +61,13 @@
         flex-wrap: wrap;
       }
 
+      .nav-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
       .nav-group + .nav-group {
         padding-left: 14px;
         border-left: 1px solid var(--border);
@@ -278,10 +285,16 @@
           {% endif %}
           {% if request.user.is_superuser or request.condominium_membership.role == "SYNDIC" or request.condominium_membership.role == "CONDO_ADMIN" %}
             <span class="nav-group">
+              <span class="nav-label">Estrutura</span>
               <a href="{% url 'core:block_list' %}">Blocos</a>
               <a href="{% url 'core:unit_list' %}">Unidades</a>
-              <a href="{% url 'core:membership_list' %}">Membros</a>
-              <a href="{% url 'core:unit_occupancy_list' %}">Moradores por Unidade</a>
+            </span>
+            <span class="nav-group">
+              <span class="nav-label">Pessoas</span>
+              <a href="{% url 'core:membership_list' %}">Pessoas do condominio</a>
+              <a href="{% url 'core:unit_occupancy_list' %}">Vinculos por unidade</a>
+            </span>
+            <span class="nav-group">
               <a href="{% url 'communication:admin_announcement_list' %}">Gerenciar Comunicados</a>
               <a href="{% url 'tickets:admin_ticket_list' %}">Gerenciar Chamados</a>
               <a href="{% url 'documents:admin_document_list' %}">Gerenciar Documentos</a>

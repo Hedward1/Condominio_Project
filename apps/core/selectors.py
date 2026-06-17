@@ -1,8 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
+from django.db.models import Prefetch
 from django.http import Http404
 
-from .models import Block, Condominium, CondominiumMembership, Unit, UnitOccupancy
+from .models import (
+    Block,
+    Condominium,
+    CondominiumMembership,
+    OccupancyType,
+    Unit,
+    UnitOccupancy,
+)
 from .permissions import user_has_condominium_access
 
 
@@ -69,9 +77,24 @@ def get_block_for_condominium(*, condominium, block_id):
 
 
 def list_units_for_condominium(*, condominium):
+    owner_occupancies = (
+        UnitOccupancy.active_objects.filter(
+            condominium=condominium,
+            occupancy_type=OccupancyType.OWNER,
+        )
+        .select_related("user")
+        .order_by("user__first_name", "user__last_name", "user__username")
+    )
     return (
         Unit.active_objects.filter(condominium=condominium)
         .select_related("block")
+        .prefetch_related(
+            Prefetch(
+                "occupancies",
+                queryset=owner_occupancies,
+                to_attr="active_owner_occupancies",
+            ),
+        )
         .order_by("block__name", "number")
     )
 
@@ -90,8 +113,16 @@ def get_unit_for_condominium(*, condominium, unit_id):
 def list_occupancies_for_condominium(*, condominium):
     return (
         UnitOccupancy.active_objects.filter(condominium=condominium)
-        .select_related("unit", "user")
+        .select_related("unit", "unit__block", "user")
         .order_by("unit__number", "user__username")
+    )
+
+
+def list_occupancies_for_unit(*, condominium, unit):
+    return (
+        UnitOccupancy.active_objects.filter(condominium=condominium, unit=unit)
+        .select_related("unit", "unit__block", "user")
+        .order_by("occupancy_type", "user__first_name", "user__last_name", "user__username")
     )
 
 
@@ -102,7 +133,7 @@ def get_membership_by_id_for_condominium(*, condominium, membership_id):
         .first()
     )
     if membership is None:
-        raise Http404("Membro nao encontrado.")
+        raise Http404("Pessoa nao encontrada.")
     return membership
 
 
@@ -113,5 +144,5 @@ def get_occupancy_for_condominium(*, condominium, occupancy_id):
         .first()
     )
     if occupancy is None:
-        raise Http404("Morador por unidade nao encontrado.")
+        raise Http404("Vinculo por unidade nao encontrado.")
     return occupancy

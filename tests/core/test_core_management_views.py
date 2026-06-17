@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from apps.audit.models import AuditLog
@@ -13,6 +14,8 @@ from apps.core.models import (
     Unit,
     UnitOccupancy,
 )
+from apps.core.selectors import list_units_for_condominium
+from apps.core.services import create_unit_occupancy
 
 
 def activate_condominium(client, condominium):
@@ -54,6 +57,41 @@ def test_resident_cannot_access_core_management(client, core_context):
 
     assert response.status_code == 403
     assert "Você não tem permissão para acessar esta área.".encode() in response.content
+
+
+@pytest.mark.django_db
+def test_core_management_pages_render_clear_user_facing_names(client, core_context):
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    expectations = [
+        (
+            reverse("core:block_list"),
+            b"Blocos",
+            b"Organize os blocos ou setores do condominio.",
+        ),
+        (
+            reverse("core:unit_list"),
+            b"Unidades",
+            b"Cadastre casas, apartamentos ou salas",
+        ),
+        (
+            reverse("core:membership_list"),
+            b"Pessoas do condominio",
+            b"Cadastre usuarios e defina seus papeis",
+        ),
+        (
+            reverse("core:unit_occupancy_list"),
+            b"Vinculos por unidade",
+            b"Defina quem e proprietario, morador ou inquilino",
+        ),
+    ]
+
+    for url, title, description in expectations:
+        response = client.get(url)
+        assert response.status_code == 200
+        assert title in response.content
+        assert description in response.content
 
 
 @pytest.mark.django_db
@@ -198,6 +236,162 @@ def test_unit_create_rejects_block_from_other_condominium(client, core_context):
 
     assert response.status_code == 200
     assert not Unit.objects.filter(condominium=core_context["condo_a"], number="101").exists()
+
+
+@pytest.mark.django_db
+def test_syndic_creates_unit_without_owner_and_sees_missing_owner_status(client, core_context):
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(
+        reverse("core:unit_create"),
+        {"block": "", "number": "101", "floor": "1", "description": ""},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    unit = Unit.objects.get(condominium=core_context["condo_a"], number="101")
+    assert not UnitOccupancy.objects.filter(
+        condominium=core_context["condo_a"],
+        unit=unit,
+    ).exists()
+    assert b"Unidade cadastrada com sucesso." in response.content
+    assert b"Sem proprietario" in response.content
+    assert b"Gerenciar vinculos" in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_shows_owner_status_and_owner_names(client, core_context):
+    unit_without_owner = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    unit_with_owner = Unit.objects.create(condominium=core_context["condo_a"], number="102")
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit_with_owner,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"))
+
+    assert response.status_code == 200
+    assert bytes(unit_without_owner.number, "utf-8") in response.content
+    assert bytes(unit_with_owner.number, "utf-8") in response.content
+    assert b"Sem proprietario" in response.content
+    assert b"resident" in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_shows_multiple_active_owners_and_hides_inactive_owner(
+    client,
+    core_context,
+    user_factory,
+):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    second_owner = user_factory(username="second_owner", email="second_owner@example.com")
+    inactive_owner = user_factory(username="inactive_owner", email="inactive_owner@example.com")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_a"],
+        user=second_owner,
+        role=CondominiumRole.OWNER,
+    )
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_a"],
+        user=inactive_owner,
+        role=CondominiumRole.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=second_owner,
+        occupancy_type=OccupancyType.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=inactive_owner,
+        occupancy_type=OccupancyType.OWNER,
+        is_active=False,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "resident" in content
+    assert "second_owner" in content
+    assert "resident," in content
+    assert "inactive_owner" not in content
+
+
+@pytest.mark.django_db
+def test_unit_list_manage_links_point_to_unit_occupancy_flow(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"))
+
+    assert response.status_code == 200
+    assert b"Gerenciar vinculos" in response.content
+    assert f"{reverse('core:unit_occupancy_create')}?unit={unit.id}".encode() in response.content
+
+
+@pytest.mark.django_db
+def test_unit_edit_shows_active_unit_occupancies(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_update", args=[unit.id]))
+
+    assert response.status_code == 200
+    assert b"Vinculos da unidade" in response.content
+    assert b"Proprietarios ativos" in response.content
+    assert b"resident" in response.content
+    assert b"Adicionar proprietario" in response.content
+    assert b"Remover vinculo" in response.content
+
+
+@pytest.mark.django_db
+def test_unit_edit_hides_inactive_occupancies(client, core_context, user_factory):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    inactive_owner = user_factory(username="inactive_owner", email="inactive_owner@example.com")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_a"],
+        user=inactive_owner,
+        role=CondominiumRole.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=inactive_owner,
+        occupancy_type=OccupancyType.OWNER,
+        is_active=False,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_update", args=[unit.id]))
+
+    assert response.status_code == 200
+    assert b"Vinculos da unidade" in response.content
+    assert b"inactive_owner" not in response.content
 
 
 @pytest.mark.django_db
@@ -533,6 +727,22 @@ def test_unit_occupancy_form_renders_only_active_condominium_choices(
 
 
 @pytest.mark.django_db
+def test_unit_occupancy_form_prefills_unit_and_block_from_query(client, core_context):
+    block = Block.objects.create(condominium=core_context["condo_a"], name="Torre A")
+    unit = Unit.objects.create(condominium=core_context["condo_a"], block=block, number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(f"{reverse('core:unit_occupancy_create')}?unit={unit.id}")
+
+    assert response.status_code == 200
+    assert b"Torre A" in response.content
+    assert b"101" in response.content
+    assert f'value="{unit.id}" selected'.encode() in response.content
+    assert f'value="{block.id}" selected'.encode() in response.content
+
+
+@pytest.mark.django_db
 def test_unit_occupancy_create_creates_audit_log(client, core_context):
     unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
     client.login(username="syndic", password="testpass123")
@@ -566,6 +776,39 @@ def test_unit_occupancy_create_creates_audit_log(client, core_context):
 
 
 @pytest.mark.django_db
+def test_syndic_links_owner_to_unit(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(
+        reverse("core:unit_occupancy_create"),
+        {
+            "block": "",
+            "unit": str(unit.id),
+            "user": str(core_context["resident"].id),
+            "occupancy_type": OccupancyType.OWNER,
+            "starts_at": "",
+            "ends_at": "",
+        },
+    )
+
+    assert response.status_code == 302
+    occupancy = UnitOccupancy.objects.get(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    assert AuditLog.objects.filter(
+        condominium=core_context["condo_a"],
+        actor=core_context["syndic"],
+        action="core.unit_occupancy.created",
+        object_id=str(occupancy.id),
+    ).exists()
+
+
+@pytest.mark.django_db
 def test_unit_occupancy_create_rejects_unit_from_other_condominium(client, core_context):
     other_unit = Unit.objects.create(condominium=core_context["condo_b"], number="202")
     client.login(username="syndic", password="testpass123")
@@ -584,6 +827,59 @@ def test_unit_occupancy_create_rejects_unit_from_other_condominium(client, core_
     assert not UnitOccupancy.objects.filter(
         condominium=core_context["condo_a"],
         unit_id=other_unit.id,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_create_unit_occupancy_service_rejects_unit_from_other_condominium(core_context):
+    other_unit = Unit.objects.create(condominium=core_context["condo_b"], number="202")
+
+    with pytest.raises(ValidationError):
+        create_unit_occupancy(
+            condominium=core_context["condo_a"],
+            actor=core_context["syndic"],
+            unit=other_unit,
+            user=core_context["resident"],
+            occupancy_type=OccupancyType.OWNER,
+        )
+
+    assert not UnitOccupancy.objects.filter(
+        condominium=core_context["condo_a"],
+        unit=other_unit,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_unit_occupancy_create_rejects_user_from_other_condominium(
+    client,
+    core_context,
+    user_factory,
+):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    other_user = user_factory(username="other", email="other@example.com")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_b"],
+        user=other_user,
+        role=CondominiumRole.RESIDENT,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(
+        reverse("core:unit_occupancy_create"),
+        {
+            "block": "",
+            "unit": str(unit.id),
+            "user": str(other_user.id),
+            "occupancy_type": OccupancyType.OWNER,
+        },
+    )
+
+    assert response.status_code == 200
+    assert not UnitOccupancy.objects.filter(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=other_user,
     ).exists()
 
 
@@ -612,6 +908,157 @@ def test_unit_occupancy_create_rejects_user_without_active_membership(
         condominium=core_context["condo_a"],
         user=outsider,
     ).exists()
+
+
+@pytest.mark.django_db
+def test_create_unit_occupancy_service_rejects_user_without_active_membership(
+    core_context,
+    user_factory,
+):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    outsider = user_factory(username="outsider", email="outsider@example.com")
+
+    with pytest.raises(ValidationError):
+        create_unit_occupancy(
+            condominium=core_context["condo_a"],
+            actor=core_context["syndic"],
+            unit=unit,
+            user=outsider,
+            occupancy_type=OccupancyType.OWNER,
+        )
+
+    assert not UnitOccupancy.objects.filter(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=outsider,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_create_unit_occupancy_rejects_duplicate_active_link(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(
+        reverse("core:unit_occupancy_create"),
+        {
+            "block": "",
+            "unit": str(unit.id),
+            "user": str(core_context["resident"].id),
+            "occupancy_type": OccupancyType.OWNER,
+        },
+    )
+
+    assert response.status_code == 200
+    assert (
+        UnitOccupancy.active_objects.filter(
+            condominium=core_context["condo_a"],
+            unit=unit,
+            user=core_context["resident"],
+            occupancy_type=OccupancyType.OWNER,
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_same_user_can_own_more_than_one_unit(core_context):
+    first_unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    second_unit = Unit.objects.create(condominium=core_context["condo_a"], number="102")
+
+    create_unit_occupancy(
+        condominium=core_context["condo_a"],
+        actor=core_context["syndic"],
+        unit=first_unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    create_unit_occupancy(
+        condominium=core_context["condo_a"],
+        actor=core_context["syndic"],
+        unit=second_unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+
+    assert UnitOccupancy.active_objects.filter(
+        condominium=core_context["condo_a"],
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    ).count() == 2
+
+
+@pytest.mark.django_db
+def test_unit_can_have_more_than_one_owner(core_context, user_factory):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    second_owner = user_factory(username="second_owner", email="second_owner@example.com")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_a"],
+        user=second_owner,
+        role=CondominiumRole.OWNER,
+    )
+
+    create_unit_occupancy(
+        condominium=core_context["condo_a"],
+        actor=core_context["syndic"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    create_unit_occupancy(
+        condominium=core_context["condo_a"],
+        actor=core_context["syndic"],
+        unit=unit,
+        user=second_owner,
+        occupancy_type=OccupancyType.OWNER,
+    )
+
+    assert UnitOccupancy.active_objects.filter(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        occupancy_type=OccupancyType.OWNER,
+    ).count() == 2
+
+
+@pytest.mark.django_db
+def test_list_units_for_condominium_prefetches_only_same_condominium_owners(
+    core_context,
+    user_factory,
+):
+    unit_a = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    other_user = user_factory(username="other", email="other@example.com")
+    unit_b = Unit.objects.create(condominium=core_context["condo_b"], number="202")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_b"],
+        user=other_user,
+        role=CondominiumRole.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit_a,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_b"],
+        unit=unit_b,
+        user=other_user,
+        occupancy_type=OccupancyType.OWNER,
+    )
+
+    units = list(list_units_for_condominium(condominium=core_context["condo_a"]))
+
+    assert units == [unit_a]
+    assert [owner.user for owner in units[0].active_owner_occupancies] == [
+        core_context["resident"],
+    ]
 
 
 @pytest.mark.django_db

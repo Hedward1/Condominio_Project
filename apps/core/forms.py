@@ -26,9 +26,10 @@ class UnitForm(forms.Form):
 
 
 class UnitOccupancyForm(forms.Form):
+    block = forms.ModelChoiceField(label="Bloco", queryset=None, required=False)
     unit = forms.ModelChoiceField(label="Unidade", queryset=None)
-    user = forms.ModelChoiceField(label="Membro", queryset=None)
-    occupancy_type = forms.ChoiceField(label="Tipo de morador", choices=OccupancyType.choices)
+    user = forms.ModelChoiceField(label="Pessoa", queryset=None)
+    occupancy_type = forms.ChoiceField(label="Tipo de vinculo", choices=OccupancyType.choices)
     is_primary = forms.BooleanField(label="Responsavel principal", required=False)
     starts_at = forms.DateField(
         label="Inicio",
@@ -43,10 +44,19 @@ class UnitOccupancyForm(forms.Form):
 
     def __init__(self, *args, condominium, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["block"].queryset = list_blocks_for_condominium(condominium=condominium)
         self.fields["unit"].queryset = list_units_for_condominium(condominium=condominium)
         self.fields["user"].queryset = list_membership_users_for_condominium(
             condominium=condominium,
         )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        block = cleaned_data.get("block")
+        unit = cleaned_data.get("unit")
+        if block is not None and unit is not None and unit.block_id != block.id:
+            self.add_error("unit", "A unidade selecionada nao pertence ao bloco informado.")
+        return cleaned_data
 
 
 class MembershipCreateForm(forms.Form):
@@ -87,7 +97,7 @@ class MembershipCreateForm(forms.Form):
                 user=self.existing_user,
             ).exists()
             if already_member:
-                raise forms.ValidationError("Este usuario ja e membro ativo deste condominio.")
+                raise forms.ValidationError("Esta pessoa ja esta ativa neste condominio.")
         return email
 
     def clean_username(self):

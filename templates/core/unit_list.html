@@ -4,7 +4,10 @@
 
 {% block content %}
   <div class="page-header">
-    <h1>Unidades</h1>
+    <div>
+      <h1>Unidades</h1>
+      <p class="muted">Cadastre casas, apartamentos ou salas e acompanhe seus proprietarios e moradores.</p>
+    </div>
     <a class="button" href="{% url 'core:unit_create' %}">Nova unidade</a>
   </div>
   <section class="panel">
@@ -15,6 +18,7 @@
             <th>Numero</th>
             <th>Bloco</th>
             <th>Andar</th>
+            <th>Proprietarios</th>
             <th>Acoes</th>
           </tr>
         </thead>
@@ -25,8 +29,20 @@
               <td>{{ unit.block.name|default:"-" }}</td>
               <td class="muted">{{ unit.floor|default:"-" }}</td>
               <td>
+                {% if unit.active_owner_occupancies %}
+                  <strong>
+                    {% for occupancy in unit.active_owner_occupancies %}
+                      {{ occupancy.user.get_full_name|default:occupancy.user.username }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  </strong>
+                {% else %}
+                  <span class="muted">Sem proprietario</span>
+                {% endif %}
+              </td>
+              <td>
                 <div class="actions">
                   <a class="button secondary" href="{% url 'core:unit_update' unit.id %}">Editar</a>
+                  <a class="button secondary" href="{% url 'core:unit_occupancy_create' %}?unit={{ unit.id }}">Gerenciar vinculos</a>
                   <a class="button danger" href="{% url 'core:unit_deactivate' unit.id %}">Desativar</a>
                 </div>
               </td>

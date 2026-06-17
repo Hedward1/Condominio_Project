@@ -356,7 +356,7 @@ def deactivate_membership(
 ) -> CondominiumMembership:
     require_condominium_manager(actor, condominium)
     if membership.condominium_id != condominium.id:
-        raise ValidationError({"membership": "O membro pertence a outro condominio."})
+        raise ValidationError({"membership": "A pessoa pertence a outro condominio."})
     if UnitOccupancy.active_objects.filter(
         condominium=condominium,
         user=membership.user,
@@ -364,7 +364,7 @@ def deactivate_membership(
         raise ValidationError(
             {
                 "membership": (
-                    "Este membro possui moradores por unidade ativos. "
+                    "Esta pessoa possui vinculos por unidade ativos. "
                     "Desative esses vinculos primeiro."
                 ),
             },
@@ -411,7 +411,16 @@ def create_unit_occupancy(
         user=user,
     ).exists()
     if not has_membership:
-        raise ValidationError({"user": "O usuario precisa ser membro ativo do condominio."})
+        raise ValidationError({"user": "A pessoa precisa estar ativa neste condominio."})
+    if UnitOccupancy.active_objects.filter(
+        condominium=condominium,
+        unit=unit,
+        user=user,
+        occupancy_type=occupancy_type,
+    ).exists():
+        raise ValidationError(
+            {"occupancy_type": "Este vinculo ativo ja existe para esta unidade e pessoa."},
+        )
 
     occupancy = UnitOccupancy(
         condominium=condominium,
@@ -445,7 +454,7 @@ def deactivate_unit_occupancy(
 ) -> UnitOccupancy:
     require_condominium_manager(actor, condominium)
     if occupancy.condominium_id != condominium.id:
-        raise ValidationError({"occupancy": "O morador por unidade pertence a outro condominio."})
+        raise ValidationError({"occupancy": "O vinculo por unidade pertence a outro condominio."})
 
     occupancy.soft_delete(user=actor)
     create_audit_log(

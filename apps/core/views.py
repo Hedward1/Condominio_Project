@@ -1,9 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import Http404
 from django.shortcuts import redirect, render
 
 from .forms import BlockForm, MembershipCreateForm, UnitForm, UnitOccupancyForm
+from .models import OccupancyType
 from .permissions import require_condominium_manager
 from .selectors import (
     get_block_for_condominium,
@@ -14,6 +16,7 @@ from .selectors import (
     list_condominiums_for_user,
     list_memberships_for_condominium,
     list_occupancies_for_condominium,
+    list_occupancies_for_unit,
     list_units_for_condominium,
 )
 from .services import (
@@ -211,7 +214,13 @@ def unit_create(request):
         except ValidationError as error:
             _add_validation_error(form, error)
         else:
-            messages.success(request, "Unidade cadastrada.")
+            messages.success(
+                request,
+                (
+                    "Unidade cadastrada com sucesso. Voce pode vincular "
+                    "proprietario/morador pela tela Vinculos por unidade."
+                ),
+            )
             return redirect("core:unit_list")
 
     return render(request, "core/unit_form.html", {"form": form})
@@ -252,7 +261,25 @@ def unit_update(request, unit_id):
             messages.success(request, "Unidade atualizada.")
             return redirect("core:unit_list")
 
-    return render(request, "core/unit_form.html", {"form": form, "is_update": True})
+    occupancies = list(list_occupancies_for_unit(condominium=condominium, unit=unit))
+    owner_occupancies = [
+        occupancy for occupancy in occupancies if occupancy.occupancy_type == OccupancyType.OWNER
+    ]
+    resident_occupancies = [
+        occupancy for occupancy in occupancies if occupancy.occupancy_type != OccupancyType.OWNER
+    ]
+
+    return render(
+        request,
+        "core/unit_form.html",
+        {
+            "form": form,
+            "is_update": True,
+            "unit": unit,
+            "owner_occupancies": owner_occupancies,
+            "resident_occupancies": resident_occupancies,
+        },
+    )
 
 
 @login_required
@@ -317,7 +344,7 @@ def membership_create(request):
         except ValidationError as error:
             _add_validation_error(form, error)
         else:
-            messages.success(request, "Membro cadastrado.")
+            messages.success(request, "Pessoa cadastrada.")
             return redirect("core:membership_list")
 
     return render(request, "core/membership_form.html", {"form": form})
@@ -344,12 +371,12 @@ def membership_deactivate(request, membership_id):
         except ValidationError as error:
             messages.error(request, "; ".join(error.messages))
         else:
-            messages.success(request, "Membro desativado.")
+            messages.success(request, "Pessoa desativada.")
             return redirect("core:membership_list")
 
     return _render_deactivate_confirmation(
         request,
-        title="Desativar membro",
+        title="Desativar pessoa",
         object_label=str(membership.user),
         cancel_url_name="core:membership_list",
     )
@@ -376,7 +403,23 @@ def unit_occupancy_create(request):
         return response
     require_condominium_manager(request.user, condominium)
 
-    form = UnitOccupancyForm(request.POST or None, condominium=condominium)
+    initial = {}
+    unit_id = request.GET.get("unit")
+    if request.method == "GET" and unit_id:
+        try:
+            unit = get_unit_for_condominium(condominium=condominium, unit_id=unit_id)
+        except ValidationError as error:
+            raise Http404("Unidade nao encontrada.") from error
+        initial = {"unit": unit.id, "block": unit.block_id}
+    occupancy_type = request.GET.get("occupancy_type")
+    if request.method == "GET" and occupancy_type in OccupancyType.values:
+        initial["occupancy_type"] = occupancy_type
+
+    form = UnitOccupancyForm(
+        request.POST or None,
+        condominium=condominium,
+        initial=initial,
+    )
     if request.method == "POST" and form.is_valid():
         try:
             create_unit_occupancy(
@@ -392,7 +435,7 @@ def unit_occupancy_create(request):
         except ValidationError as error:
             _add_validation_error(form, error)
         else:
-            messages.success(request, "Morador por unidade cadastrado.")
+            messages.success(request, "Vinculo por unidade cadastrado.")
             return redirect("core:unit_occupancy_list")
 
     return render(request, "core/unit_occupancy_form.html", {"form": form})
@@ -419,12 +462,12 @@ def unit_occupancy_deactivate(request, occupancy_id):
         except ValidationError as error:
             messages.error(request, "; ".join(error.messages))
         else:
-            messages.success(request, "Morador por unidade desativado.")
+            messages.success(request, "Vinculo por unidade desativado.")
             return redirect("core:unit_occupancy_list")
 
     return _render_deactivate_confirmation(
         request,
-        title="Desativar morador por unidade",
+        title="Desativar vinculo por unidade",
         object_label=str(occupancy),
         cancel_url_name="core:unit_occupancy_list",
     )

@@ -1,11 +1,14 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Membros{% endblock %}
+{% block title %}Pessoas do condominio{% endblock %}
 
 {% block content %}
   <div class="page-header">
-    <h1>Membros</h1>
-    <a class="button" href="{% url 'core:membership_create' %}">Novo membro</a>
+    <div>
+      <h1>Pessoas do condominio</h1>
+      <p class="muted">Cadastre usuarios e defina seus papeis, como sindico, conselho, proprietario ou morador.</p>
+    </div>
+    <a class="button" href="{% url 'core:membership_create' %}">Nova pessoa</a>
   </div>
   <section class="panel">
     {% if memberships %}
@@ -34,7 +37,7 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum membro cadastrado.</p>
+      <p class="muted">Nenhuma pessoa cadastrada.</p>
     {% endif %}
   </section>
 {% endblock %}

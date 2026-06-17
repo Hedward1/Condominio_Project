@@ -14,4 +14,74 @@
       <button class="button" type="submit">Salvar</button>
     </form>
   </section>
+  {% if is_update %}
+    <section class="panel" style="margin-top: 16px;">
+      <div class="page-header">
+        <div>
+          <h2>Vinculos da unidade</h2>
+          <p class="muted">Veja proprietarios, moradores e inquilinos ativos desta unidade.</p>
+        </div>
+        <div class="actions">
+          <a class="button secondary" href="{% url 'core:unit_occupancy_create' %}?unit={{ unit.id }}&occupancy_type=OWNER">Adicionar proprietario</a>
+          <a class="button secondary" href="{% url 'core:unit_occupancy_create' %}?unit={{ unit.id }}">Adicionar vinculo</a>
+        </div>
+      </div>
+
+      <h3>Proprietarios ativos</h3>
+      {% if owner_occupancies %}
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for occupancy in owner_occupancies %}
+              <tr>
+                <td>{{ occupancy.user.get_full_name|default:occupancy.user.username }}</td>
+                <td>{{ occupancy.user.email }}</td>
+                <td>
+                  <a class="button danger" href="{% url 'core:unit_occupancy_deactivate' occupancy.id %}">Remover vinculo</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">Nenhum proprietario ativo vinculado.</p>
+      {% endif %}
+
+      <h3>Moradores e inquilinos ativos</h3>
+      {% if resident_occupancies %}
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Tipo</th>
+              <th>Principal</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for occupancy in resident_occupancies %}
+              <tr>
+                <td>{{ occupancy.user.get_full_name|default:occupancy.user.username }}</td>
+                <td>{{ occupancy.user.email }}</td>
+                <td>{{ occupancy.get_occupancy_type_display }}</td>
+                <td>{% if occupancy.is_primary %}Sim{% else %}Nao{% endif %}</td>
+                <td>
+                  <a class="button danger" href="{% url 'core:unit_occupancy_deactivate' occupancy.id %}">Remover vinculo</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">Nenhum morador ou inquilino ativo vinculado.</p>
+      {% endif %}
+    </section>
+  {% endif %}
 {% endblock %}

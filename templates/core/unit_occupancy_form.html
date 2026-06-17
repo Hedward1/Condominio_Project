@@ -1,10 +1,13 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Novo morador por unidade{% endblock %}
+{% block title %}Vincular pessoa a unidade{% endblock %}
 
 {% block content %}
   <div class="page-header">
-    <h1>Novo morador por unidade</h1>
+    <div>
+      <h1>Vincular pessoa a unidade</h1>
+      <p class="muted">Escolha bloco, unidade, pessoa e tipo de vinculo.</p>
+    </div>
     <a class="button secondary" href="{% url 'core:unit_occupancy_list' %}">Voltar</a>
   </div>
   <section class="panel">

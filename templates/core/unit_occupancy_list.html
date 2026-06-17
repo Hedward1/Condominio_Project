@@ -1,11 +1,14 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Moradores por Unidade{% endblock %}
+{% block title %}Vinculos por unidade{% endblock %}
 
 {% block content %}
   <div class="page-header">
-    <h1>Moradores por Unidade</h1>
-    <a class="button" href="{% url 'core:unit_occupancy_create' %}">Novo morador por unidade</a>
+    <div>
+      <h1>Vinculos por unidade</h1>
+      <p class="muted">Defina quem e proprietario, morador ou inquilino de cada unidade.</p>
+    </div>
+    <a class="button" href="{% url 'core:unit_occupancy_create' %}">Vincular pessoa a unidade</a>
   </div>
   <section class="panel">
     {% if occupancies %}
@@ -13,7 +16,8 @@
         <thead>
           <tr>
             <th>Unidade</th>
-            <th>Membro</th>
+            <th>Bloco</th>
+            <th>Pessoa</th>
             <th>Tipo</th>
             <th>Principal</th>
             <th>Periodo</th>
@@ -24,6 +28,7 @@
           {% for occupancy in occupancies %}
             <tr>
               <td>{{ occupancy.unit }}</td>
+              <td>{{ occupancy.unit.block.name|default:"-" }}</td>
               <td>{{ occupancy.user.get_full_name|default:occupancy.user.username }}</td>
               <td>{{ occupancy.get_occupancy_type_display }}</td>
               <td>{% if occupancy.is_primary %}Sim{% else %}Nao{% endif %}</td>
@@ -40,7 +45,7 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum morador por unidade cadastrado.</p>
+      <p class="muted">Nenhum vinculo por unidade cadastrado.</p>
     {% endif %}
   </section>
 {% endblock %}
