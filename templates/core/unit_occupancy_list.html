@@ -45,7 +45,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum vinculo por unidade cadastrado.</p>
+      <div class="empty-state">
+        <p>Nenhum vinculo por unidade cadastrado.</p>
+        <a class="button" href="{% url 'core:unit_occupancy_create' %}">Vincular pessoa a unidade</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

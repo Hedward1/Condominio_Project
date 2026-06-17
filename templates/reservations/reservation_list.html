@@ -7,7 +7,7 @@
     <h1>Reservas</h1>
     <a class="button" href="{% url 'reservations:reservation_create' %}">Solicitar reserva</a>
   </div>
-  <section class="panel" style="margin-bottom:16px">
+  <section class="panel">
     <h2>Areas comuns</h2>
     {% if amenities %}
       <table>
@@ -29,7 +29,9 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhuma area comum disponivel.</p>
+      <div class="empty-state">
+        <p>Nenhuma area comum disponivel.</p>
+      </div>
     {% endif %}
   </section>
   <section class="panel">
@@ -56,7 +58,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhuma reserva solicitada.</p>
+      <div class="empty-state">
+        <p>Nenhuma reserva solicitada.</p>
+        <a class="button" href="{% url 'reservations:reservation_create' %}">Solicitar reserva</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

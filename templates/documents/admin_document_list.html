@@ -10,8 +10,8 @@
       <a class="button" href="{% url 'documents:document_create' %}">Novo documento</a>
     </div>
   </div>
-  <section class="panel" style="margin-bottom:16px">
-    <form method="get">
+  <section class="panel">
+    <form method="get" class="filters">
       {% include "core/_form_fields.html" with form=filter_form %}
       <div class="actions">
         <button class="button" type="submit">Filtrar</button>
@@ -50,7 +50,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum documento cadastrado.</p>
+      <div class="empty-state">
+        <p>Nenhum documento cadastrado.</p>
+        <a class="button" href="{% url 'documents:document_create' %}">Novo documento</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

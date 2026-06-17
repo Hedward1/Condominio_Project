@@ -54,7 +54,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum comunicado cadastrado.</p>
+      <div class="empty-state">
+        <p>Nenhum comunicado cadastrado.</p>
+        <a class="button" href="{% url 'communication:announcement_create' %}">Novo comunicado</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

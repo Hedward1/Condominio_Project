@@ -3,47 +3,52 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-  <h1>Dashboard</h1>
+  <div class="page-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="muted">Acompanhe os principais indicadores operacionais do condominio ativo.</p>
+    </div>
+  </div>
   <div class="stack">
     <section class="panel">
-      <div class="grid">
-        <div class="metric">
+      <div class="stat-grid">
+        <div class="stat-card">
           <span class="muted">Unidades</span>
           <strong>{{ summary.total_units }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Moradores ativos</span>
           <strong>{{ summary.active_residents }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Comunicados no mes</span>
           <strong>{{ summary.published_announcements_this_month }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Leitura dos comunicados</span>
           <strong>{{ summary.announcement_read_rate }}%</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Chamados abertos</span>
           <strong>{{ summary.open_tickets }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Chamados em andamento</span>
           <strong>{{ summary.tickets_in_progress }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Resolvidos no mes</span>
           <strong>{{ summary.tickets_resolved_this_month }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Documentos ativos</span>
           <strong>{{ summary.active_documents }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Reservas pendentes</span>
           <strong>{{ summary.pending_reservations }}</strong>
         </div>
-        <div class="metric">
+        <div class="stat-card">
           <span class="muted">Reservas aprovadas no mes</span>
           <strong>{{ summary.approved_reservations_this_month }}</strong>
         </div>

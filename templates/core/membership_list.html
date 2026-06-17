@@ -37,7 +37,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhuma pessoa cadastrada.</p>
+      <div class="empty-state">
+        <p>Nenhuma pessoa cadastrada.</p>
+        <a class="button" href="{% url 'core:membership_create' %}">Nova pessoa</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

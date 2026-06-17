@@ -10,8 +10,8 @@
       <a class="button secondary" href="{% url 'tickets:ticket_create' %}">Abrir chamado</a>
     </div>
   </div>
-  <section class="panel" style="margin-bottom:16px">
-    <form method="get">
+  <section class="panel">
+    <form method="get" class="filters">
       {% include "core/_form_fields.html" with form=filter_form %}
       <div class="actions">
         <button class="button" type="submit">Filtrar</button>
@@ -46,7 +46,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum chamado cadastrado.</p>
+      <div class="empty-state">
+        <p>Nenhum chamado cadastrado.</p>
+        <a class="button secondary" href="{% url 'tickets:ticket_create' %}">Abrir chamado</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

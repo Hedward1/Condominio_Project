@@ -36,7 +36,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum bloco cadastrado.</p>
+      <div class="empty-state">
+        <p>Nenhum bloco cadastrado.</p>
+        <a class="button" href="{% url 'core:block_create' %}">Novo bloco</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

@@ -33,7 +33,9 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum documento disponivel.</p>
+      <div class="empty-state">
+        <p>Nenhum documento disponivel.</p>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

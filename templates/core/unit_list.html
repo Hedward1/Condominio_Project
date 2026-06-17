@@ -93,11 +93,15 @@
         </tbody>
       </table>
     {% elif has_any_units and has_filters %}
-      <p class="muted">Nenhuma unidade encontrada com os filtros selecionados.</p>
-      <a class="button secondary" href="{% url 'core:unit_list' %}">Limpar filtros</a>
+      <div class="empty-state">
+        <p>Nenhuma unidade encontrada com os filtros selecionados.</p>
+        <a class="button secondary" href="{% url 'core:unit_list' %}">Limpar filtros</a>
+      </div>
     {% else %}
-      <p class="muted">Nao ha unidades cadastradas ainda. Cadastre casas, apartamentos ou salas para comecar a organizar o condominio.</p>
-      <a class="button" href="{% url 'core:unit_create' %}">Nova unidade</a>
+      <div class="empty-state">
+        <p>Nao ha unidades cadastradas ainda. Cadastre casas, apartamentos ou salas para comecar a organizar o condominio.</p>
+        <a class="button" href="{% url 'core:unit_create' %}">Nova unidade</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

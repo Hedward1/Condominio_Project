@@ -30,7 +30,9 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum comunicado publicado.</p>
+      <div class="empty-state">
+        <p>Nenhum comunicado publicado.</p>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

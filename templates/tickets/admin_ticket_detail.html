@@ -16,7 +16,7 @@
     <p>{{ ticket.description|linebreaks }}</p>
   </section>
 
-  <section class="panel" style="margin-top:16px">
+  <section class="panel">
     <h2>Administrar chamado</h2>
     <form method="post">
       {% csrf_token %}
@@ -42,7 +42,7 @@
     {% endif %}
   </section>
 
-  <section class="panel" style="margin-top:16px">
+  <section class="panel">
     <h2>Novo comentario</h2>
     <form method="post">
       {% csrf_token %}

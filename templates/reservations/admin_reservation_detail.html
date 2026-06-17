@@ -7,7 +7,7 @@
     <h1>Gerenciar Reserva</h1>
     <a class="button secondary" href="{% url 'reservations:admin_reservation_list' %}">Voltar</a>
   </div>
-  <section class="panel" style="margin-bottom:16px">
+  <section class="panel">
     <p><strong>Area comum:</strong> {{ reservation.amenity.name }}</p>
     <p><strong>Solicitante:</strong> {{ reservation.requested_by.get_full_name|default:reservation.requested_by.username }}</p>
     <p><strong>Inicio:</strong> {{ reservation.start_at }}</p>

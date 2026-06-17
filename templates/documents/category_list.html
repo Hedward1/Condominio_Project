@@ -36,7 +36,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhuma categoria cadastrada.</p>
+      <div class="empty-state">
+        <p>Nenhuma categoria cadastrada.</p>
+        <a class="button" href="{% url 'documents:category_create' %}">Nova categoria</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

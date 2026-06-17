@@ -9,8 +9,8 @@
       <a class="button secondary" href="{% url 'reservations:amenity_list' %}">Areas comuns</a>
     </div>
   </div>
-  <section class="panel" style="margin-bottom:16px">
-    <form method="get">
+  <section class="panel">
+    <form method="get" class="filters">
       {% include "core/_form_fields.html" with form=filter_form %}
       <div class="actions">
         <button class="button" type="submit">Filtrar</button>
@@ -43,7 +43,9 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhuma reserva cadastrada.</p>
+      <div class="empty-state">
+        <p>Nenhuma reserva cadastrada.</p>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

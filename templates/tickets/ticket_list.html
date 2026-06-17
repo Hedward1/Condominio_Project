@@ -32,7 +32,10 @@
         </tbody>
       </table>
     {% else %}
-      <p class="muted">Nenhum chamado aberto por voce.</p>
+      <div class="empty-state">
+        <p>Nenhum chamado aberto por voce.</p>
+        <a class="button" href="{% url 'tickets:ticket_create' %}">Abrir chamado</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}
