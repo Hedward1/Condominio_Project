@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseNotAllowed
+from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from apps.core.permissions import require_active_membership, require_condominium_manager
 
@@ -17,6 +20,7 @@ from .selectors import (
     get_reservation_for_manager,
     get_reservation_for_user,
     list_amenities_for_condominium,
+    list_reservation_days_for_amenity,
     list_reservations_for_manager,
     list_reservations_for_user,
 )
@@ -55,6 +59,54 @@ def _message_validation_error(request, error):
     messages.error(request, "; ".join(error.messages))
 
 
+def _parse_reservation_month(value):
+    if value:
+        try:
+            return datetime.strptime(value[:7], "%Y-%m").date().replace(day=1)
+        except ValueError:
+            pass
+    return timezone.localdate().replace(day=1)
+
+
+def _shift_month(month_date, months):
+    month_index = month_date.month - 1 + months
+    year = month_date.year + month_index // 12
+    month = month_index % 12 + 1
+    return month_date.replace(year=year, month=month, day=1)
+
+
+def _selected_reservation_amenity(request, *, condominium):
+    amenity_id = request.POST.get("amenity") if request.method == "POST" else request.GET.get("amenity")
+    if not amenity_id:
+        return None
+    try:
+        return get_amenity_for_condominium(condominium=condominium, amenity_id=amenity_id)
+    except Http404:
+        return None
+
+
+def _reservation_availability_context(request, *, condominium, amenity):
+    if amenity is None:
+        return None
+
+    month_value = request.POST.get("start_at") if request.method == "POST" else request.GET.get("month")
+    month_date = _parse_reservation_month(month_value)
+    previous_month = _shift_month(month_date, -1)
+    next_month = _shift_month(month_date, 1)
+    return {
+        "amenity": amenity,
+        "month": month_date,
+        "month_label": month_date.strftime("%m/%Y"),
+        "previous_month": previous_month.strftime("%Y-%m"),
+        "next_month": next_month.strftime("%Y-%m"),
+        "days": list_reservation_days_for_amenity(
+            condominium=condominium,
+            amenity=amenity,
+            month_date=month_date,
+        ),
+    }
+
+
 @login_required
 def reservation_list(request):
     condominium, response = _active_condominium_or_redirect(request)
@@ -82,7 +134,13 @@ def reservation_create(request):
         return response
     require_active_membership(request.user, condominium)
 
-    form = ReservationRequestForm(request.POST or None, condominium=condominium)
+    selected_amenity = _selected_reservation_amenity(request, condominium=condominium)
+    initial = {"amenity": selected_amenity.id} if request.method == "GET" and selected_amenity else None
+    form = ReservationRequestForm(
+        request.POST or None,
+        condominium=condominium,
+        initial=initial,
+    )
     if request.method == "POST" and form.is_valid():
         try:
             reservation = request_reservation(
@@ -99,7 +157,18 @@ def reservation_create(request):
             messages.success(request, "Reserva solicitada.")
             return redirect("reservations:reservation_detail", reservation_id=reservation.id)
 
-    return render(request, "reservations/reservation_form.html", {"form": form})
+    return render(
+        request,
+        "reservations/reservation_form.html",
+        {
+            "availability": _reservation_availability_context(
+                request,
+                condominium=condominium,
+                amenity=selected_amenity,
+            ),
+            "form": form,
+        },
+    )
 
 
 @login_required

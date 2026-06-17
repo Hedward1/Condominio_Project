@@ -897,8 +897,10 @@ def test_unit_occupancy_form_renders_only_active_condominium_choices(
     core_context,
     user_factory,
 ):
-    Unit.objects.create(condominium=core_context["condo_a"], number="101")
-    Unit.objects.create(condominium=core_context["condo_b"], number="202")
+    block_a = Block.objects.create(condominium=core_context["condo_a"], name="Torre A")
+    block_b = Block.objects.create(condominium=core_context["condo_b"], name="Torre B")
+    Unit.objects.create(condominium=core_context["condo_a"], block=block_a, number="101")
+    Unit.objects.create(condominium=core_context["condo_b"], block=block_b, number="202")
     other_user = user_factory(username="other", email="other@example.com")
     user_factory(username="outsider", email="outsider@example.com")
     inactive_member = user_factory(username="inactive_member", email="inactive@example.com")
@@ -919,8 +921,10 @@ def test_unit_occupancy_form_renders_only_active_condominium_choices(
     response = client.get(reverse("core:unit_occupancy_create"))
 
     assert response.status_code == 200
+    assert b"Torre A" in response.content
     assert b"101" in response.content
     assert b"resident" in response.content
+    assert b"Torre B" not in response.content
     assert b"202" not in response.content
     assert b"other" not in response.content
     assert b"outsider" not in response.content
@@ -941,6 +945,27 @@ def test_unit_occupancy_form_prefills_unit_and_block_from_query(client, core_con
     assert b"101" in response.content
     assert f'value="{unit.id}" selected'.encode() in response.content
     assert f'value="{block.id}" selected'.encode() in response.content
+
+
+@pytest.mark.django_db
+def test_unit_occupancy_form_includes_block_metadata_for_unit_filtering(
+    client,
+    core_context,
+):
+    block_a = Block.objects.create(condominium=core_context["condo_a"], name="Torre A")
+    block_b = Block.objects.create(condominium=core_context["condo_a"], name="Torre B")
+    Unit.objects.create(condominium=core_context["condo_a"], block=block_a, number="101")
+    Unit.objects.create(condominium=core_context["condo_a"], block=block_b, number="202")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_occupancy_create"))
+
+    assert response.status_code == 200
+    assert b"data-unit-occupancy-form" in response.content
+    assert b"js/unit_occupancy_form.js" in response.content
+    assert f'data-block-id="{block_a.id}"'.encode() in response.content
+    assert f'data-block-id="{block_b.id}"'.encode() in response.content
 
 
 @pytest.mark.django_db
@@ -973,6 +998,38 @@ def test_unit_occupancy_create_creates_audit_log(client, core_context):
         actor=core_context["syndic"],
         action="core.unit_occupancy.created",
         object_id=str(occupancy.id),
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_unit_occupancy_create_rejects_unit_from_different_selected_block(
+    client,
+    core_context,
+):
+    block_a = Block.objects.create(condominium=core_context["condo_a"], name="Torre A")
+    block_b = Block.objects.create(condominium=core_context["condo_a"], name="Torre B")
+    unit = Unit.objects.create(condominium=core_context["condo_a"], block=block_a, number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.post(
+        reverse("core:unit_occupancy_create"),
+        {
+            "block": str(block_b.id),
+            "unit": str(unit.id),
+            "user": str(core_context["resident"].id),
+            "occupancy_type": OccupancyType.RESIDENT,
+            "starts_at": "",
+            "ends_at": "",
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"A unidade selecionada nao pertence ao bloco informado." in response.content
+    assert not UnitOccupancy.objects.filter(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
     ).exists()
 
 

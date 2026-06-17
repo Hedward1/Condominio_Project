@@ -1,7 +1,8 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
 
@@ -11,6 +12,7 @@ from apps.core.models import Condominium, CondominiumMembership, CondominiumRole
 from apps.dashboard.selectors import get_syndic_dashboard_summary
 from apps.reservations.models import Amenity, Reservation, ReservationStatus
 from apps.reservations.selectors import (
+    list_reservation_days_for_amenity,
     list_reservations_for_manager,
     list_reservations_for_user,
 )
@@ -34,6 +36,17 @@ def datetime_input(value):
 
 def future_window(days=1, hours=0, duration_hours=2):
     start = timezone.now() + timedelta(days=days, hours=hours)
+    end = start + timedelta(hours=duration_hours)
+    return start, end
+
+
+def future_month_window(day=10, hour=18, duration_hours=2):
+    first_next_month = (timezone.localdate().replace(day=1) + timedelta(days=40)).replace(day=1)
+    start_date = first_next_month.replace(day=day)
+    start = timezone.make_aware(
+        datetime.combine(start_date, time(hour=hour)),
+        timezone.get_current_timezone(),
+    )
     end = start + timedelta(hours=duration_hours)
     return start, end
 
@@ -316,6 +329,118 @@ def test_resident_requests_reservation_with_audit_log(client, reservations_conte
         action="reservations.reservation.requested",
         object_id=str(reservation.id),
     ).exists()
+
+
+@pytest.mark.django_db
+def test_reservation_create_shows_availability_for_selected_amenity(
+    client,
+    reservations_context,
+):
+    approved_start, approved_end = future_month_window(day=10, hour=18)
+    pending_start, pending_end = future_month_window(day=11, hour=9, duration_hours=3)
+    Reservation.objects.create(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["resident"],
+        start_at=approved_start,
+        end_at=approved_end,
+        status=ReservationStatus.APPROVED,
+    )
+    Reservation.objects.create(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["second_resident"],
+        start_at=pending_start,
+        end_at=pending_end,
+        status=ReservationStatus.PENDING,
+    )
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.get(
+        reverse("reservations:reservation_create"),
+        {
+            "amenity": str(reservations_context["amenity_a"].id),
+            "month": approved_start.strftime("%Y-%m"),
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"Disponibilidade da area" in response.content
+    assert b"Com reserva" in response.content
+    assert b"Pendente" in response.content
+    assert b"Livre" in response.content
+    assert b"18:00 as 20:00" in response.content
+    assert b"09:00 as 12:00" in response.content
+    days_by_day = {day["day"]: day for day in response.context["availability"]["days"]}
+    assert days_by_day[10]["label"] == "Com reserva"
+    assert days_by_day[11]["label"] == "Pendente"
+    assert days_by_day[12]["label"] == "Livre"
+
+
+@pytest.mark.django_db
+def test_reservation_availability_ignores_other_amenity_condominium_and_closed_statuses(
+    client,
+    reservations_context,
+):
+    target_start, target_end = future_month_window(day=10, hour=18)
+    other_amenity = Amenity.objects.create(
+        condominium=reservations_context["condo_a"],
+        name="Piscina",
+    )
+    Reservation.objects.create(
+        condominium=reservations_context["condo_a"],
+        amenity=other_amenity,
+        requested_by=reservations_context["resident"],
+        start_at=target_start,
+        end_at=target_end,
+        status=ReservationStatus.APPROVED,
+    )
+    Reservation.objects.create(
+        condominium=reservations_context["condo_b"],
+        amenity=reservations_context["amenity_b"],
+        requested_by=reservations_context["other_resident"],
+        start_at=target_start,
+        end_at=target_end,
+        status=ReservationStatus.APPROVED,
+    )
+    for status in (ReservationStatus.REJECTED, ReservationStatus.CANCELLED):
+        Reservation.objects.create(
+            condominium=reservations_context["condo_a"],
+            amenity=reservations_context["amenity_a"],
+            requested_by=reservations_context["resident"],
+            start_at=target_start,
+            end_at=target_end,
+            status=status,
+        )
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.get(
+        reverse("reservations:reservation_create"),
+        {
+            "amenity": str(reservations_context["amenity_a"].id),
+            "month": target_start.strftime("%Y-%m"),
+        },
+    )
+
+    days_by_day = {day["day"]: day for day in response.context["availability"]["days"]}
+    assert response.status_code == 200
+    assert days_by_day[10]["label"] == "Livre"
+    assert days_by_day[10]["reservations"] == []
+    assert b"Churrasqueira" not in response.content
+
+
+@pytest.mark.django_db
+def test_reservation_availability_selector_blocks_cross_tenant_amenity(
+    reservations_context,
+):
+    with pytest.raises(Http404):
+        list_reservation_days_for_amenity(
+            condominium=reservations_context["condo_a"],
+            amenity=reservations_context["amenity_b"],
+            month_date=timezone.localdate(),
+        )
 
 
 @pytest.mark.django_db

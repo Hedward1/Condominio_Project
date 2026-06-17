@@ -9,6 +9,15 @@ from .selectors import (
 )
 
 
+class UnitSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            instance = getattr(value, "instance", None)
+            option["attrs"]["data-block-id"] = str(instance.block_id or "") if instance else ""
+        return option
+
+
 class BlockForm(forms.Form):
     name = forms.CharField(label="Nome", max_length=120)
     description = forms.CharField(label="Descricao", required=False, widget=forms.Textarea)
@@ -55,7 +64,7 @@ class UnitFilterForm(forms.Form):
 
 class UnitOccupancyForm(forms.Form):
     block = forms.ModelChoiceField(label="Bloco", queryset=None, required=False)
-    unit = forms.ModelChoiceField(label="Unidade", queryset=None)
+    unit = forms.ModelChoiceField(label="Unidade", queryset=None, widget=UnitSelect)
     user = forms.ModelChoiceField(label="Pessoa", queryset=None)
     occupancy_type = forms.ChoiceField(label="Tipo de vinculo", choices=OccupancyType.choices)
     is_primary = forms.BooleanField(label="Responsavel principal", required=False)

@@ -1,4 +1,5 @@
 {% extends "base/layout.html" %}
+{% load static %}
 
 {% block title %}Solicitar reserva{% endblock %}
 
@@ -8,10 +9,53 @@
     <a class="button secondary" href="{% url 'reservations:reservation_list' %}">Voltar</a>
   </div>
   <section class="panel">
-    <form method="post">
+    <form method="post" data-reservation-form>
       {% csrf_token %}
       {% include "core/_form_fields.html" %}
       <button class="button" type="submit">Solicitar</button>
     </form>
   </section>
+  {% if availability %}
+    <section class="panel">
+      <div class="page-header">
+        <div>
+          <h2>Disponibilidade da area</h2>
+          <p class="muted">
+            {{ availability.amenity.name }} - {{ availability.month_label }}.
+            A disponibilidade visual e orientativa; a validacao por horario continua sendo feita ao solicitar.
+          </p>
+        </div>
+        <div class="actions">
+          <a class="button secondary" href="?amenity={{ availability.amenity.id }}&month={{ availability.previous_month }}">Mes anterior</a>
+          <a class="button secondary" href="?amenity={{ availability.amenity.id }}&month={{ availability.next_month }}">Proximo mes</a>
+        </div>
+      </div>
+      <div class="actions">
+        <span class="badge success">Livre</span>
+        <span class="badge warning">Pendente</span>
+        <span class="badge danger">Com reserva</span>
+      </div>
+      <div class="availability-grid">
+        {% for day in availability.days %}
+          <div class="availability-day">
+            <div class="availability-day-header">
+              <strong>Dia {{ day.day }}</strong>
+              <span class="badge {{ day.badge_class }}">{{ day.label }}</span>
+            </div>
+            {% if day.reservations %}
+              <ul class="availability-periods">
+                {% for reservation in day.reservations %}
+                  <li>{{ reservation.status_label }} - {{ reservation.time_range }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/reservation_form.js' %}" defer></script>
 {% endblock %}
