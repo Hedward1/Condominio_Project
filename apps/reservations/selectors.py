@@ -78,6 +78,7 @@ def list_reservation_days_for_amenity(*, condominium, amenity, month_date):
             reservation.end_at - timedelta(microseconds=1),
             current_timezone,
         )
+        display_end = timezone.localtime(reservation.end_at, current_timezone)
         first_day = max(local_start.date(), month_start_date)
         last_day = min(local_end.date(), month_end_date - timedelta(days=1))
         current_day = first_day
@@ -86,10 +87,12 @@ def list_reservation_days_for_amenity(*, condominium, amenity, month_date):
                 {
                     "status": reservation.status,
                     "status_label": reservation.get_status_display(),
-                    "time_range": (
-                        f"{timezone.localtime(reservation.start_at, current_timezone):%H:%M} "
-                        f"as {timezone.localtime(reservation.end_at, current_timezone):%H:%M}"
-                    ),
+                    "status_class": "danger"
+                    if reservation.status == ReservationStatus.APPROVED
+                    else "warning",
+                    "start_time": f"{local_start:%H:%M}",
+                    "end_time": f"{display_end:%H:%M}",
+                    "time_range": f"{local_start:%H:%M} as {display_end:%H:%M}",
                 },
             )
             current_day += timedelta(days=1)
@@ -98,21 +101,34 @@ def list_reservation_days_for_amenity(*, condominium, amenity, month_date):
     for day in range(1, days_in_month + 1):
         day_reservations = reservations_by_day[day]
         statuses = {reservation["status"] for reservation in day_reservations}
-        if ReservationStatus.APPROVED in statuses:
+        has_approved = ReservationStatus.APPROVED in statuses
+        has_pending = ReservationStatus.PENDING in statuses
+        if has_approved:
             label = "Com reserva"
             badge_class = "danger"
-        elif ReservationStatus.PENDING in statuses:
+        elif has_pending:
             label = "Pendente"
             badge_class = "warning"
         else:
             label = "Livre"
             badge_class = "success"
+        day_date = date(month_start_date.year, month_start_date.month, day)
         days.append(
             {
-                "date": date(month_start_date.year, month_start_date.month, day),
+                "date": day_date,
+                "date_iso": day_date.isoformat(),
+                "iso_date": day_date.isoformat(),
                 "day": day,
                 "label": label,
                 "badge_class": badge_class,
+                "has_approved": has_approved,
+                "has_pending": has_pending,
+                "is_selectable": not has_approved,
+                "status_class": {
+                    "danger": "occupied",
+                    "warning": "pending",
+                    "success": "free",
+                }[badge_class],
                 "reservations": day_reservations,
             },
         )

@@ -366,7 +366,16 @@ def test_reservation_create_shows_availability_for_selected_amenity(
     )
 
     assert response.status_code == 200
+    assert b"Escolha o dia da reserva" in response.content
     assert b"Disponibilidade da area" in response.content
+    assert b"js/reservation_form.js" in response.content
+    assert b'data-reservation-form' in response.content
+    assert b'data-reservation-day' in response.content
+    assert b'name="start_at"' in response.content
+    assert b'name="end_at"' in response.content
+    assert b"Hora inicial" not in response.content
+    assert b"Hora final" not in response.content
+    assert b"visually-hidden" in response.content
     assert b"Com reserva" in response.content
     assert b"Pendente" in response.content
     assert b"Livre" in response.content
@@ -374,8 +383,79 @@ def test_reservation_create_shows_availability_for_selected_amenity(
     assert b"09:00 as 12:00" in response.content
     days_by_day = {day["day"]: day for day in response.context["availability"]["days"]}
     assert days_by_day[10]["label"] == "Com reserva"
+    assert days_by_day[10]["is_selectable"] is False
+    assert days_by_day[10]["has_approved"] is True
     assert days_by_day[11]["label"] == "Pendente"
+    assert days_by_day[11]["is_selectable"] is True
+    assert days_by_day[11]["has_pending"] is True
     assert days_by_day[12]["label"] == "Livre"
+    assert days_by_day[12]["is_selectable"] is True
+
+
+@pytest.mark.django_db
+def test_resident_requests_full_day_reservation(client, reservations_context):
+    start_at, _ = future_month_window(day=12, hour=0, duration_hours=24)
+    end_at = start_at + timedelta(days=1)
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.post(
+        reverse("reservations:reservation_create"),
+        {
+            "amenity": str(reservations_context["amenity_a"].id),
+            "start_at": datetime_input(start_at),
+            "end_at": datetime_input(end_at),
+            "notes": "Reserva por dia inteiro",
+        },
+    )
+
+    assert response.status_code == 302
+    reservation = Reservation.objects.get(
+        condominium=reservations_context["condo_a"],
+        requested_by=reservations_context["resident"],
+        notes="Reserva por dia inteiro",
+    )
+    assert timezone.localtime(reservation.start_at).time() == time(0, 0)
+    assert timezone.localtime(reservation.end_at).time() == time(0, 0)
+    assert timezone.localtime(reservation.end_at).date() == (
+        timezone.localtime(reservation.start_at).date() + timedelta(days=1)
+    )
+
+
+@pytest.mark.django_db
+def test_resident_cannot_request_overlapping_approved_reservation(
+    client,
+    reservations_context,
+):
+    existing_start, existing_end = future_window(days=2, hours=1, duration_hours=2)
+    Reservation.objects.create(
+        condominium=reservations_context["condo_a"],
+        amenity=reservations_context["amenity_a"],
+        requested_by=reservations_context["second_resident"],
+        start_at=existing_start,
+        end_at=existing_end,
+        status=ReservationStatus.APPROVED,
+    )
+    client.login(username="resident", password="testpass123")
+    activate_condominium(client, reservations_context["condo_a"])
+
+    response = client.post(
+        reverse("reservations:reservation_create"),
+        {
+            "amenity": str(reservations_context["amenity_a"].id),
+            "start_at": datetime_input(existing_start + timedelta(minutes=30)),
+            "end_at": datetime_input(existing_end + timedelta(minutes=30)),
+            "notes": "Conflito manipulado pelo frontend",
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"Ja existe uma reserva aprovada para este periodo." in response.content
+    assert not Reservation.objects.filter(
+        condominium=reservations_context["condo_a"],
+        requested_by=reservations_context["resident"],
+        notes="Conflito manipulado pelo frontend",
+    ).exists()
 
 
 @pytest.mark.django_db

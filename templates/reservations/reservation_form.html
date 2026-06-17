@@ -11,49 +11,114 @@
   <section class="panel">
     <form method="post" data-reservation-form>
       {% csrf_token %}
-      {% include "core/_form_fields.html" %}
-      <button class="button" type="submit">Solicitar</button>
+      {% if form.non_field_errors %}
+        {{ form.non_field_errors }}
+      {% endif %}
+
+      <div class="field">
+        {{ form.amenity.label_tag }}
+        {{ form.amenity }}
+        {{ form.amenity.errors }}
+      </div>
+
+      <div class="reservation-picker">
+        <div class="page-header">
+          <div>
+            <h2>Escolha o dia da reserva</h2>
+            <p class="muted">
+              A disponibilidade visual e orientativa. A confirmacao depende da validacao do dia solicitado.
+            </p>
+          </div>
+          {% if availability %}
+            <div class="actions">
+              <a class="button secondary" href="?amenity={{ availability.amenity.id }}&month={{ availability.previous_month }}">Mes anterior</a>
+              <a class="button secondary" href="?amenity={{ availability.amenity.id }}&month={{ availability.next_month }}">Proximo mes</a>
+            </div>
+          {% endif %}
+        </div>
+
+        {% if availability %}
+          <div class="actions">
+            <span class="badge success">Livre</span>
+            <span class="badge warning">Pendente</span>
+            <span class="badge danger">Com reserva</span>
+          </div>
+          <p class="muted">Disponibilidade da area: {{ availability.amenity.name }} - {{ availability.month_label }}</p>
+          <div class="reservation-day-grid">
+            {% for day in availability.days %}
+              <button
+                class="reservation-day {{ day.status_class }}{% if day.has_approved %} blocked{% endif %}"
+                type="button"
+                data-reservation-day
+                data-date="{{ day.iso_date }}"
+                data-label="Dia {{ day.day }}"
+                data-has-approved="{% if day.has_approved %}true{% else %}false{% endif %}"
+                data-has-pending="{% if day.has_pending %}true{% else %}false{% endif %}"
+                data-selectable="{% if day.is_selectable %}true{% else %}false{% endif %}"
+              >
+                <span class="reservation-day-title">Dia {{ day.day }}</span>
+                <span class="badge {{ day.badge_class }}">{{ day.label }}</span>
+                {% if day.reservations %}
+                  <span class="reservation-time-list">
+                    {% for reservation in day.reservations %}
+                      <span
+                        data-period-status="{{ reservation.status }}"
+                        data-period-start="{{ reservation.start_time }}"
+                        data-period-end="{{ reservation.end_time }}"
+                      >
+                        {{ reservation.status_label }} - {{ reservation.time_range }}
+                      </span>
+                    {% endfor %}
+                  </span>
+                {% endif %}
+              </button>
+            {% endfor %}
+          </div>
+          <div class="reservation-period-panel">
+            <div class="field">
+              <label>Data escolhida</label>
+              <output data-selected-date>Nenhum dia selecionado</output>
+            </div>
+            <div class="reservation-summary" data-reservation-summary>
+              Selecione um dia disponivel para solicitar a reserva.
+            </div>
+            <div class="reservation-warning" data-reservation-warning hidden></div>
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <p>Selecione uma area comum para visualizar os dias e horarios disponiveis.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="reservation-native-fields">
+        <h3>Dados da solicitacao</h3>
+        <p class="muted">Informe observacoes se necessario. O periodo tecnico e preenchido ao selecionar o dia.</p>
+        {% if form.start_at.errors or form.end_at.errors %}
+          <div class="reservation-warning">
+            Selecione um dia da grade de disponibilidade antes de solicitar.
+          </div>
+        {% endif %}
+        <div class="field visually-hidden">
+          {{ form.start_at.label_tag }}
+          {{ form.start_at }}
+          {{ form.start_at.errors }}
+        </div>
+        <div class="field visually-hidden">
+          {{ form.end_at.label_tag }}
+          {{ form.end_at }}
+          {{ form.end_at.errors }}
+        </div>
+        <div class="field">
+          {{ form.notes.label_tag }}
+          {{ form.notes }}
+          {{ form.notes.errors }}
+        </div>
+      </div>
+
+      <button class="button" type="submit" data-submit-reservation>Solicitar</button>
     </form>
   </section>
-  {% if availability %}
-    <section class="panel">
-      <div class="page-header">
-        <div>
-          <h2>Disponibilidade da area</h2>
-          <p class="muted">
-            {{ availability.amenity.name }} - {{ availability.month_label }}.
-            A disponibilidade visual e orientativa; a validacao por horario continua sendo feita ao solicitar.
-          </p>
-        </div>
-        <div class="actions">
-          <a class="button secondary" href="?amenity={{ availability.amenity.id }}&month={{ availability.previous_month }}">Mes anterior</a>
-          <a class="button secondary" href="?amenity={{ availability.amenity.id }}&month={{ availability.next_month }}">Proximo mes</a>
-        </div>
-      </div>
-      <div class="actions">
-        <span class="badge success">Livre</span>
-        <span class="badge warning">Pendente</span>
-        <span class="badge danger">Com reserva</span>
-      </div>
-      <div class="availability-grid">
-        {% for day in availability.days %}
-          <div class="availability-day">
-            <div class="availability-day-header">
-              <strong>Dia {{ day.day }}</strong>
-              <span class="badge {{ day.badge_class }}">{{ day.label }}</span>
-            </div>
-            {% if day.reservations %}
-              <ul class="availability-periods">
-                {% for reservation in day.reservations %}
-                  <li>{{ reservation.status_label }} - {{ reservation.time_range }}</li>
-                {% endfor %}
-              </ul>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    </section>
-  {% endif %}
 {% endblock %}
 
 {% block extra_js %}
