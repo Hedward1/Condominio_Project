@@ -257,6 +257,8 @@ def test_syndic_creates_unit_without_owner_and_sees_missing_owner_status(client,
     ).exists()
     assert b"Unidade cadastrada com sucesso." in response.content
     assert b"Sem proprietario" in response.content
+    assert b"Sem morador" in response.content
+    assert b"Cadastro incompleto" in response.content
     assert b"Gerenciar vinculos" in response.content
 
 
@@ -279,7 +281,45 @@ def test_unit_list_shows_owner_status_and_owner_names(client, core_context):
     assert bytes(unit_without_owner.number, "utf-8") in response.content
     assert bytes(unit_with_owner.number, "utf-8") in response.content
     assert b"Sem proprietario" in response.content
+    assert b"Sem morador" in response.content
+    assert b"Cadastro incompleto" in response.content
     assert b"resident" in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_shows_new_structure_and_complete_status(client, core_context, user_factory):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    tenant = user_factory(username="tenant", email="tenant@example.com")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_a"],
+        user=tenant,
+        role=CondominiumRole.TENANT,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=tenant,
+        occupancy_type=OccupancyType.TENANT,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"))
+
+    assert response.status_code == 200
+    assert b"Unidade" in response.content
+    assert b"Proprietarios" in response.content
+    assert b"Moradores/Inquilinos" in response.content
+    assert b"Situacao" in response.content
+    assert b"resident" in response.content
+    assert b"tenant" in response.content
+    assert b"Cadastro completo" in response.content
 
 
 @pytest.mark.django_db
@@ -334,6 +374,32 @@ def test_unit_list_shows_multiple_active_owners_and_hides_inactive_owner(
 
 
 @pytest.mark.django_db
+def test_unit_list_hides_inactive_resident_occupancy(client, core_context, user_factory):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    inactive_tenant = user_factory(username="inactive_tenant", email="inactive_tenant@example.com")
+    CondominiumMembership.objects.create(
+        condominium=core_context["condo_a"],
+        user=inactive_tenant,
+        role=CondominiumRole.TENANT,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=inactive_tenant,
+        occupancy_type=OccupancyType.TENANT,
+        is_active=False,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"))
+
+    assert response.status_code == 200
+    assert b"Sem morador" in response.content
+    assert b"inactive_tenant" not in response.content
+
+
+@pytest.mark.django_db
 def test_unit_list_manage_links_point_to_unit_occupancy_flow(client, core_context):
     unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
     client.login(username="syndic", password="testpass123")
@@ -355,6 +421,13 @@ def test_unit_edit_shows_active_unit_occupancies(client, core_context):
         user=core_context["resident"],
         occupancy_type=OccupancyType.OWNER,
     )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.RESIDENT,
+        is_primary=True,
+    )
     client.login(username="syndic", password="testpass123")
     activate_condominium(client, core_context["condo_a"])
 
@@ -364,8 +437,26 @@ def test_unit_edit_shows_active_unit_occupancies(client, core_context):
     assert b"Vinculos da unidade" in response.content
     assert b"Proprietarios ativos" in response.content
     assert b"resident" in response.content
+    assert core_context["resident"].email.encode() in response.content
+    assert b"Morador" in response.content
+    assert b"Sim" in response.content
     assert b"Adicionar proprietario" in response.content
+    assert b"Adicionar morador/inquilino" in response.content
     assert b"Remover vinculo" in response.content
+
+
+@pytest.mark.django_db
+def test_unit_edit_empty_sections_show_helpful_messages(client, core_context):
+    unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_update", args=[unit.id]))
+
+    assert response.status_code == 200
+    assert b"Dados da unidade" in response.content
+    assert b"Esta unidade ainda nao possui proprietario vinculado." in response.content
+    assert b"Esta unidade ainda nao possui morador ou inquilino vinculado." in response.content
 
 
 @pytest.mark.django_db
@@ -392,6 +483,116 @@ def test_unit_edit_hides_inactive_occupancies(client, core_context, user_factory
     assert response.status_code == 200
     assert b"Vinculos da unidade" in response.content
     assert b"inactive_owner" not in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_filters_by_number(client, core_context):
+    Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    Unit.objects.create(condominium=core_context["condo_a"], number="202")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"), {"number": "101"})
+
+    assert response.status_code == 200
+    assert b"101" in response.content
+    assert b"202" not in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_filters_by_block(client, core_context):
+    block_a = Block.objects.create(condominium=core_context["condo_a"], name="Torre A")
+    block_b = Block.objects.create(condominium=core_context["condo_a"], name="Torre B")
+    Unit.objects.create(condominium=core_context["condo_a"], block=block_a, number="101")
+    Unit.objects.create(condominium=core_context["condo_a"], block=block_b, number="202")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"), {"block": str(block_a.id)})
+
+    assert response.status_code == 200
+    assert b"101" in response.content
+    assert b"202" not in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_filters_by_situation(client, core_context):
+    complete_unit = Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    missing_owner_unit = Unit.objects.create(condominium=core_context["condo_a"], number="202")
+    missing_resident_unit = Unit.objects.create(condominium=core_context["condo_a"], number="303")
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=complete_unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=complete_unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.RESIDENT,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=missing_owner_unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.RESIDENT,
+    )
+    UnitOccupancy.objects.create(
+        condominium=core_context["condo_a"],
+        unit=missing_resident_unit,
+        user=core_context["resident"],
+        occupancy_type=OccupancyType.OWNER,
+    )
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    complete_response = client.get(reverse("core:unit_list"), {"situation": "complete"})
+    missing_owner_response = client.get(
+        reverse("core:unit_list"),
+        {"situation": "missing_owner"},
+    )
+    missing_resident_response = client.get(
+        reverse("core:unit_list"),
+        {"situation": "missing_resident"},
+    )
+
+    assert complete_response.status_code == 200
+    assert b"101" in complete_response.content
+    assert b"202" not in complete_response.content
+    assert b"303" not in complete_response.content
+    assert b"202" in missing_owner_response.content
+    assert b"101" not in missing_owner_response.content
+    assert b"303" in missing_resident_response.content
+    assert b"101" not in missing_resident_response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_rejects_other_condominium_block_filter_safely(client, core_context):
+    Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    other_block = Block.objects.create(condominium=core_context["condo_b"], name="Torre B")
+    Unit.objects.create(condominium=core_context["condo_b"], block=other_block, number="202")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"), {"block": str(other_block.id)})
+
+    assert response.status_code == 200
+    assert b"101" in response.content
+    assert b"202" not in response.content
+
+
+@pytest.mark.django_db
+def test_unit_list_empty_filter_result_shows_clear_state(client, core_context):
+    Unit.objects.create(condominium=core_context["condo_a"], number="101")
+    client.login(username="syndic", password="testpass123")
+    activate_condominium(client, core_context["condo_a"])
+
+    response = client.get(reverse("core:unit_list"), {"number": "999"})
+
+    assert response.status_code == 200
+    assert b"Nenhuma unidade encontrada com os filtros selecionados." in response.content
+    assert b"Limpar filtros" in response.content
 
 
 @pytest.mark.django_db

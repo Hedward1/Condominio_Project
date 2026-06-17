@@ -11,14 +11,36 @@
     <a class="button" href="{% url 'core:unit_create' %}">Nova unidade</a>
   </div>
   <section class="panel">
+    <form method="get" class="filters">
+      <div class="field">
+        {{ filter_form.number.label_tag }}
+        {{ filter_form.number }}
+      </div>
+      <div class="field">
+        {{ filter_form.block.label_tag }}
+        {{ filter_form.block }}
+      </div>
+      <div class="field">
+        {{ filter_form.situation.label_tag }}
+        {{ filter_form.situation }}
+      </div>
+      <div class="actions">
+        <button class="button" type="submit">Filtrar</button>
+        <a class="button secondary" href="{% url 'core:unit_list' %}">Limpar filtros</a>
+      </div>
+    </form>
+  </section>
+  <section class="panel">
     {% if units %}
       <table>
         <thead>
           <tr>
-            <th>Numero</th>
+            <th>Unidade</th>
             <th>Bloco</th>
             <th>Andar</th>
             <th>Proprietarios</th>
+            <th>Moradores/Inquilinos</th>
+            <th>Situacao</th>
             <th>Acoes</th>
           </tr>
         </thead>
@@ -30,28 +52,52 @@
               <td class="muted">{{ unit.floor|default:"-" }}</td>
               <td>
                 {% if unit.active_owner_occupancies %}
-                  <strong>
+                  <span class="badge success">Com proprietario</span>
+                  <div class="muted">
                     {% for occupancy in unit.active_owner_occupancies %}
                       {{ occupancy.user.get_full_name|default:occupancy.user.username }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
-                  </strong>
+                  </div>
                 {% else %}
-                  <span class="muted">Sem proprietario</span>
+                  <span class="badge warning">Sem proprietario</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if unit.active_resident_occupancies %}
+                  <span class="badge success">Com morador</span>
+                  <div class="muted">
+                    {% for occupancy in unit.active_resident_occupancies %}
+                      {{ occupancy.user.get_full_name|default:occupancy.user.username }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span class="badge warning">Sem morador</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if unit.has_active_owner and unit.has_active_resident %}
+                  <span class="badge success">Cadastro completo</span>
+                {% else %}
+                  <span class="badge warning">Cadastro incompleto</span>
                 {% endif %}
               </td>
               <td>
                 <div class="actions">
-                  <a class="button secondary" href="{% url 'core:unit_update' unit.id %}">Editar</a>
+                  <a class="button secondary" href="{% url 'core:unit_update' unit.id %}">Ver/editar</a>
                   <a class="button secondary" href="{% url 'core:unit_occupancy_create' %}?unit={{ unit.id }}">Gerenciar vinculos</a>
-                  <a class="button danger" href="{% url 'core:unit_deactivate' unit.id %}">Desativar</a>
+                  <a class="button danger-subtle" href="{% url 'core:unit_deactivate' unit.id %}">Desativar</a>
                 </div>
               </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
+    {% elif has_any_units and has_filters %}
+      <p class="muted">Nenhuma unidade encontrada com os filtros selecionados.</p>
+      <a class="button secondary" href="{% url 'core:unit_list' %}">Limpar filtros</a>
     {% else %}
-      <p class="muted">Nenhuma unidade cadastrada.</p>
+      <p class="muted">Nao ha unidades cadastradas ainda. Cadastre casas, apartamentos ou salas para comecar a organizar o condominio.</p>
+      <a class="button" href="{% url 'core:unit_create' %}">Nova unidade</a>
     {% endif %}
   </section>
 {% endblock %}

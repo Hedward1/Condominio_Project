@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
 from django.shortcuts import redirect, render
 
-from .forms import BlockForm, MembershipCreateForm, UnitForm, UnitOccupancyForm
+from .forms import BlockForm, MembershipCreateForm, UnitFilterForm, UnitForm, UnitOccupancyForm
 from .models import OccupancyType
 from .permissions import require_condominium_manager
 from .selectors import (
@@ -186,10 +186,26 @@ def unit_list(request):
         return response
     require_condominium_manager(request.user, condominium)
 
+    filter_form = UnitFilterForm(request.GET or None, condominium=condominium)
+    filters = {}
+    if filter_form.is_valid():
+        filters = {
+            key: value
+            for key, value in filter_form.cleaned_data.items()
+            if value not in ("", None)
+        }
+    units = list_units_for_condominium(condominium=condominium, filters=filters)
+    has_any_units = list_units_for_condominium(condominium=condominium).exists()
+
     return render(
         request,
         "core/unit_list.html",
-        {"units": list_units_for_condominium(condominium=condominium)},
+        {
+            "filter_form": filter_form,
+            "has_any_units": has_any_units,
+            "has_filters": bool(request.GET),
+            "units": units,
+        },
     )
 
 

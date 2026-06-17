@@ -25,6 +25,34 @@ class UnitForm(forms.Form):
         self.fields["block"].queryset = list_blocks_for_condominium(condominium=condominium)
 
 
+class UnitFilterForm(forms.Form):
+    SITUATION_ALL = ""
+    SITUATION_MISSING_OWNER = "missing_owner"
+    SITUATION_MISSING_RESIDENT = "missing_resident"
+    SITUATION_COMPLETE = "complete"
+    SITUATION_INCOMPLETE = "incomplete"
+
+    SITUATION_CHOICES = (
+        (SITUATION_ALL, "Todas"),
+        (SITUATION_MISSING_OWNER, "Sem proprietario"),
+        (SITUATION_MISSING_RESIDENT, "Sem morador"),
+        (SITUATION_COMPLETE, "Cadastro completo"),
+        (SITUATION_INCOMPLETE, "Cadastro incompleto"),
+    )
+
+    number = forms.CharField(label="Unidade", max_length=40, required=False)
+    block = forms.ModelChoiceField(label="Bloco", queryset=None, required=False)
+    situation = forms.ChoiceField(
+        label="Situacao",
+        choices=SITUATION_CHOICES,
+        required=False,
+    )
+
+    def __init__(self, *args, condominium, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["block"].queryset = list_blocks_for_condominium(condominium=condominium)
+
+
 class UnitOccupancyForm(forms.Form):
     block = forms.ModelChoiceField(label="Bloco", queryset=None, required=False)
     unit = forms.ModelChoiceField(label="Unidade", queryset=None)

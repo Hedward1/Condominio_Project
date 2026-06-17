@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
-from django.db.models import Prefetch
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import Http404
 
 from .models import (
@@ -76,7 +76,8 @@ def get_block_for_condominium(*, condominium, block_id):
     return block
 
 
-def list_units_for_condominium(*, condominium):
+def list_units_for_condominium(*, condominium, filters=None):
+    filters = filters or {}
     owner_occupancies = (
         UnitOccupancy.active_objects.filter(
             condominium=condominium,
@@ -85,18 +86,61 @@ def list_units_for_condominium(*, condominium):
         .select_related("user")
         .order_by("user__first_name", "user__last_name", "user__username")
     )
-    return (
+    resident_occupancies = (
+        UnitOccupancy.active_objects.filter(
+            condominium=condominium,
+            occupancy_type__in=[OccupancyType.RESIDENT, OccupancyType.TENANT],
+        )
+        .select_related("user")
+        .order_by("user__first_name", "user__last_name", "user__username")
+    )
+    active_owner_exists = UnitOccupancy.active_objects.filter(
+        condominium=condominium,
+        unit=OuterRef("pk"),
+        occupancy_type=OccupancyType.OWNER,
+    )
+    active_resident_exists = UnitOccupancy.active_objects.filter(
+        condominium=condominium,
+        unit=OuterRef("pk"),
+        occupancy_type__in=[OccupancyType.RESIDENT, OccupancyType.TENANT],
+    )
+    queryset = (
         Unit.active_objects.filter(condominium=condominium)
         .select_related("block")
+        .annotate(
+            has_active_owner=Exists(active_owner_exists),
+            has_active_resident=Exists(active_resident_exists),
+        )
         .prefetch_related(
             Prefetch(
                 "occupancies",
                 queryset=owner_occupancies,
                 to_attr="active_owner_occupancies",
             ),
+            Prefetch(
+                "occupancies",
+                queryset=resident_occupancies,
+                to_attr="active_resident_occupancies",
+            ),
         )
-        .order_by("block__name", "number")
     )
+    number = filters.get("number")
+    if number:
+        queryset = queryset.filter(number__icontains=number)
+    block = filters.get("block")
+    if block is not None:
+        queryset = queryset.filter(block=block)
+    situation = filters.get("situation")
+    if situation == "missing_owner":
+        queryset = queryset.filter(has_active_owner=False)
+    elif situation == "missing_resident":
+        queryset = queryset.filter(has_active_resident=False)
+    elif situation == "complete":
+        queryset = queryset.filter(has_active_owner=True, has_active_resident=True)
+    elif situation == "incomplete":
+        queryset = queryset.filter(Q(has_active_owner=False) | Q(has_active_resident=False))
+
+    return queryset.order_by("block__name", "number")
 
 
 def get_unit_for_condominium(*, condominium, unit_id):
